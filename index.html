@@ -25,7 +25,6 @@
             overflow-x: auto;
         }
 
-        /* رأس الصفحة */
         header {
             display: flex;
             align-items: center;
@@ -40,7 +39,6 @@
         h1 { color: #0056b3; margin: 0; font-size: 24px; font-weight: 700; }
         h2 { color: #555; margin: 5px 0 0 0; font-size: 16px; }
 
-        /* لوحة الأدمن */
         .admin-panel {
             background: #2c3e50;
             color: white;
@@ -54,7 +52,7 @@
             gap: 10px;
         }
         
-        .admin-controls { display: none; gap: 10px; } /* مخفي حتى تسجيل الدخول */
+        .admin-controls { display: none; gap: 10px; }
         
         button {
             padding: 8px 15px;
@@ -73,7 +71,6 @@
         
         button:hover { opacity: 0.9; transform: translateY(-1px); }
 
-        /* الجدول */
         table {
             width: 100%;
             border-collapse: collapse;
@@ -110,17 +107,22 @@
             color: white;
         }
 
-        /* وضع التعديل */
-        body.editing-mode td.editable {
+        /* تنسيق وضع التعديل */
+        body.editing-mode .editable {
             border: 2px dashed #3498db;
             cursor: pointer;
             background-color: #f0f8ff;
         }
-        body.editing-mode td.editable:hover { background-color: #d6eaf8; }
+        
+        /* جعل العناوين قابلة للتعديل بوضوح */
+        body.editing-mode th.editable-header {
+            border: 2px dashed #f1c40f;
+            cursor: pointer;
+            background-color: #2980b9;
+        }
 
-        /* الألوان والحالات */
         .status-ok { color: #28a745; font-weight: bold; font-size: 20px; }
-        .status-late { color: #dc3545; font-weight: bold; font-size: 20px; } /* أحمر غامق */
+        .status-late { color: #dc3545; font-weight: bold; font-size: 20px; }
 
         .badge {
             display: inline-block; padding: 4px 10px; border-radius: 12px;
@@ -144,7 +146,6 @@
             text-align: center; font-size: 14px; color: #0056b3; font-weight: bold;
         }
         
-        /* مؤشر التحميل */
         #loader { text-align: center; padding: 20px; font-weight: bold; color: #0056b3; }
 
         @media print {
@@ -158,16 +159,15 @@
 
 <div class="container">
     
-    <!-- لوحة التحكم -->
     <div class="admin-panel">
         <div style="font-weight: bold;">🔒 بوابة المشرفين</div>
         <div id="loginSection">
             <button class="btn-login" onclick="adminLogin()">تسجيل دخول</button>
         </div>
         <div id="adminControls" class="admin-controls">
-            <span style="font-size:12px; color:#bdc3c7;">انقر مرتين على (✔/✘) للتبديل، أو انقر مرة واحدة للكتابة</span>
+            <span style="font-size:12px; color:#bdc3c7;">اضغط على اسم الشهر لتعديله، وعلى (✔/✘) مرتين للتبديل</span>
             <button class="btn-save" onclick="saveToFirebase()">☁ حفظ التغييرات</button>
-            <button class="btn-reset" onclick="uploadInitialData()">⚠ تهيئة البيانات (لأول مرة)</button>
+            <button class="btn-reset" onclick="uploadInitialData()">⚠ تحديث الهيكلة (مسح البيانات)</button>
             <button class="btn-logout" onclick="location.reload()">خروج</button>
         </div>
     </div>
@@ -192,19 +192,11 @@
 
     <table id="mainTable" style="display:none;">
         <thead>
-            <tr>
-                <th style="min-width: 150px;">الموقع / المستشفى</th>
-                <th style="min-width: 140px;">المقاول</th>
-                <th style="width: 60px;">المتأخرة</th>
-                <th>أكتوبر 25</th> <th>سبتمبر 25</th> <th>أغسطس 25</th> <th>يوليو 25</th>
-                <th>يونيو 25</th> <th>مايو 25</th> <th>أبريل 24</th> <th>مارس 25</th>
-                <th>فبراير 25</th> <th>يناير 25</th> <th>ديسمبر 24</th> <th>نوفمبر 24</th>
-                <th style="min-width: 200px;">ملاحظات هامة</th>
-            </tr>
+            <tr id="headerRow">
+                </tr>
         </thead>
         <tbody id="tableBody">
-            <!-- يتم تعبئة البيانات هنا تلقائياً بواسطة JavaScript -->
-        </tbody>
+            </tbody>
     </table>
 
     <footer>
@@ -212,13 +204,10 @@
     </footer>
 </div>
 
-<!-- إعدادات Firebase -->
 <script type="module">
-    // استيراد المكتبات من CDN
     import { initializeApp } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-app.js";
     import { getDatabase, ref, onValue, set } from "https://www.gstatic.com/firebasejs/9.22.0/firebase-database.js";
 
-    // إعدادات مشروعك
     const firebaseConfig = {
         apiKey: "AIzaSyAP-wgrP2o6ifi3XuaMK-lBB43nvrs3GfA",
         authDomain: "tabuk-kpi.firebaseapp.com",
@@ -229,70 +218,68 @@
         measurementId: "G-9FCG4452CQ"
     };
 
-    // تشغيل Firebase
     const app = initializeApp(firebaseConfig);
     const db = getDatabase(app);
     
-    // متغير عالمي لتخزين البيانات محلياً
-    window.currentData = [];
+    // الهيكل الجديد: يحتوي على (monthNames) للعناوين و (rows) للبيانات
+    window.currentData = { monthNames: [], rows: [] };
     window.isAdmin = false;
 
-    // دالة: قراءة البيانات من السيرفر
-    const dataRef = ref(db, 'kpi_data');
+    const dataRef = ref(db, 'kpi_data_v2'); // غيرنا اسم المسار لضمان تحديث الهيكلة
     onValue(dataRef, (snapshot) => {
         const data = snapshot.val();
         const loader = document.getElementById('loader');
         const table = document.getElementById('mainTable');
         
-        if (data) {
+        if (data && data.rows) {
             window.currentData = data;
             renderTable(data);
             loader.style.display = 'none';
             table.style.display = 'table';
         } else {
-            loader.innerHTML = "لا توجد بيانات! يرجى تسجيل الدخول كمسؤول وضغط 'تهيئة البيانات'.";
+            loader.innerHTML = "يرجى تسجيل الدخول والضغط على 'تحديث الهيكلة' لإنشاء الجدول الجديد.";
         }
     });
 
-    // دالة: رفع البيانات للفيربيز
     window.saveToFirebase = function() {
         if (!window.isAdmin) return;
-        set(ref(db, 'kpi_data'), window.currentData)
-            .then(() => {
-                alert("تم الحفظ في السيرفر بنجاح! ✅ سيظهر التحديث عند الجميع فوراً.");
-            })
-            .catch((error) => {
-                alert("حدث خطأ أثناء الحفظ: " + error);
-            });
+        set(ref(db, 'kpi_data_v2'), window.currentData)
+            .then(() => { alert("تم الحفظ بنجاح! ✅"); })
+            .catch((error) => { alert("خطأ: " + error); });
     };
 
-    // دالة: رفع البيانات الأولية (للاستخدام مرة واحدة)
     window.uploadInitialData = function() {
-        if(confirm("هل تريد رفع البيانات الافتراضية؟ (سيتم مسح أي بيانات حالية)")) {
-            const initialData = [
-                { name: "مستشفى ضبا العام", cont: "شركة الخليجية الأولي", late: 0, months: ["✔","✔","✔","✔","✔","✔","✔","✔","✔","✔","✔","✔"], notes: "" },
-                { name: "مستشفى أملج العام", cont: "الخليجية الأولى", late: 0, months: ["✔","✔","✔","✔","✔","✔","✔","✔","✔","✔","✔","✔"], notes: "يوجد ملاحظات سابقة (×)" },
-                { name: "مستشفى حقل العام", cont: "الخليجية الأولى", late: 0, months: ["✔","✔","✔","✔","✔","✔","✔","✔","✔","✔","✔","✔"], notes: "سجل سابق غير منتظم (×)" },
-                { name: "مستشفى البدع العام", cont: "الخليجية الأولى", late: 1, months: ["✘","✔","✔","✔","✔","✔","✔","✔","✔","✔","✔","✔"], notes: "تأخر الرفع لشهر أكتوبر" },
-                { name: "مستشفى أشواق العام", cont: "الخليجية الأولى", late: 0, months: ["✔","✔","✔","✔","✔","✔","✔","✔","✔","✔","✔","✔"], notes: "" },
-                { name: "مستشفى تيماء العام", cont: "الخليجية الأولى", late: 0, months: ["✔","✔","✔","✔","✔","✔","✔","✔","✔","✔","✔","✔"], notes: "" },
-                { name: "مستشفى أبوراكة العام", cont: "الخليجية الأولى", late: 0, months: ["✔","✔","✔","✔","✔","✔","✔","✔","✔","✔","✔","✔"], notes: "" },
-                { name: "مستشفى الملك فهد", cont: "الخليجية الأولى", late: 0, months: ["✔","✔","✔","✔","✔","✔","✔","✔","✔","✔","✔","✔"], notes: "" },
-                { name: "مستشفى الصحة النفسية", cont: "سراكو / العرفج", late: 12, months: ["✘","✘","✘","✘","✘","✘","✘","✘","✘","✔","✔","✔"], notes: "يلزم نقل العقد من فرع الوزارة لتجمع تبوك" },
-                { name: "مستشفى الملك خالد", cont: "رجب وسلسله", late: 1, months: ["✘","✔","✔","✔","✔","✔","✔","✔","✔","✔","✔","✔"], notes: "تمديد 10% / شراء مباشر" },
-                { name: "مستشفى الولادة والأطفال", cont: "المجال العربي", late: 1, months: ["✘","✔","✔","✔","✔","✔","✔","✔","✔","✔","✔","✔"], notes: "" },
-                { name: "مستشفى الوجه", cont: "دار المعدات الطبية", late: 1, months: ["✘","✔","✔","✔","✔","✔","✔","✔","✔","✔","✔","✔"], notes: "مستخلصات ختامية متأخرة" }
-            ];
+        if(confirm("تحذير: هذا الخيار سيقوم بإعادة ضبط الجدول وأسماء الشهور. هل أنت متأكد؟")) {
+            const initialData = {
+                // هنا نحدد أسماء الشهور القابلة للتعديل
+                monthNames: [
+                    "أكتوبر 25", "سبتمبر 25", "أغسطس 25", "يوليو 25", 
+                    "يونيو 25", "مايو 25", "أبريل 24", "مارس 25", 
+                    "فبراير 25", "يناير 25", "ديسمبر 24", "نوفمبر 24"
+                ],
+                rows: [
+                    { name: "مستشفى ضبا العام", cont: "شركة الخليجية الأولي", late: 0, months: ["✔","✔","✔","✔","✔","✔","✔","✔","✔","✔","✔","✔"], notes: "" },
+                    { name: "مستشفى أملج العام", cont: "الخليجية الأولى", late: 0, months: ["✔","✔","✔","✔","✔","✔","✔","✔","✔","✔","✔","✔"], notes: "يوجد ملاحظات سابقة" },
+                    { name: "مستشفى حقل العام", cont: "الخليجية الأولى", late: 0, months: ["✔","✔","✔","✔","✔","✔","✔","✔","✔","✔","✔","✔"], notes: "سجل سابق غير منتظم" },
+                    { name: "مستشفى البدع العام", cont: "الخليجية الأولى", late: 1, months: ["✘","✔","✔","✔","✔","✔","✔","✔","✔","✔","✔","✔"], notes: "تأخر الرفع لشهر أكتوبر" },
+                    { name: "مستشفى أشواق العام", cont: "الخليجية الأولى", late: 0, months: ["✔","✔","✔","✔","✔","✔","✔","✔","✔","✔","✔","✔"], notes: "" },
+                    { name: "مستشفى تيماء العام", cont: "الخليجية الأولى", late: 0, months: ["✔","✔","✔","✔","✔","✔","✔","✔","✔","✔","✔","✔"], notes: "" },
+                    { name: "مستشفى أبوراكة العام", cont: "الخليجية الأولى", late: 0, months: ["✔","✔","✔","✔","✔","✔","✔","✔","✔","✔","✔","✔"], notes: "" },
+                    { name: "مستشفى الملك فهد", cont: "الخليجية الأولى", late: 0, months: ["✔","✔","✔","✔","✔","✔","✔","✔","✔","✔","✔","✔"], notes: "" },
+                    { name: "مستشفى الصحة النفسية", cont: "سراكو / العرفج", late: 12, months: ["✘","✘","✘","✘","✘","✘","✘","✘","✘","✔","✔","✔"], notes: "يلزم نقل العقد" },
+                    { name: "مستشفى الملك خالد", cont: "رجب وسلسله", late: 1, months: ["✘","✔","✔","✔","✔","✔","✔","✔","✔","✔","✔","✔"], notes: "تمديد 10% / شراء مباشر" },
+                    { name: "مستشفى الولادة والأطفال", cont: "المجال العربي", late: 1, months: ["✘","✔","✔","✔","✔","✔","✔","✔","✔","✔","✔","✔"], notes: "" },
+                    { name: "مستشفى الوجه", cont: "دار المعدات الطبية", late: 1, months: ["✘","✔","✔","✔","✔","✔","✔","✔","✔","✔","✔","✔"], notes: "مستخلصات ختامية متأخرة" }
+                ]
+            };
             
-            window.currentData = initialData; // تحديث محلي
-            window.saveToFirebase(); // رفع للسيرفر
+            window.currentData = initialData;
+            window.saveToFirebase();
         }
     };
 </script>
 
 <script>
-    // الجافاسكربت الخاص بواجهة المستخدم (UI Logic)
-    
     function adminLogin() {
         const pass = prompt("الرجاء إدخال كلمة مرور المسؤول:");
         if(pass === "1234") {
@@ -300,7 +287,6 @@
             document.body.classList.add('editing-mode');
             document.getElementById('loginSection').style.display = 'none';
             document.getElementById('adminControls').style.display = 'flex';
-            // إعادة رسم الجدول لتفعيل خصائص التعديل
             renderTable(window.currentData);
         } else {
             alert("كلمة المرور خاطئة");
@@ -308,71 +294,85 @@
     }
 
     function renderTable(data) {
+        // أولاً: بناء العناوين (Headers)
+        const headerRow = document.getElementById('headerRow');
+        headerRow.innerHTML = `
+            <th style="min-width: 150px;">الموقع / المستشفى</th>
+            <th style="min-width: 140px;">المقاول</th>
+            <th style="width: 60px;">المتأخرة</th>
+        `;
+
+        // إضافة عناوين الشهور القابلة للتعديل
+        if(data.monthNames) {
+            data.monthNames.forEach((monthName, index) => {
+                headerRow.innerHTML += `<th class="editable-header" onclick="editHeader(${index})">${monthName}</th>`;
+            });
+        }
+
+        headerRow.innerHTML += `<th style="min-width: 200px;">ملاحظات هامة</th>`;
+
+
+        // ثانياً: بناء الصفوف (Body)
         const tbody = document.getElementById('tableBody');
         tbody.innerHTML = '';
 
-        data.forEach((row, rowIndex) => {
-            const tr = document.createElement('tr');
-            
-            // 1. المستشفى
-            tr.innerHTML += `<td>${row.name}</td>`;
-            // 2. المقاول
-            tr.innerHTML += `<td>${row.cont}</td>`;
-            // 3. المتأخرة
-            let badgeClass = row.late > 0 ? 'badge-red' : 'badge-green';
-            tr.innerHTML += `<td class="editable" onclick="editCell(${rowIndex}, 'late')"><span class="badge ${badgeClass}">${row.late}</span></td>`;
+        if(data.rows) {
+            data.rows.forEach((row, rowIndex) => {
+                const tr = document.createElement('tr');
+                
+                tr.innerHTML += `<td>${row.name}</td>`;
+                tr.innerHTML += `<td>${row.cont}</td>`;
+                
+                let badgeClass = row.late > 0 ? 'badge-red' : 'badge-green';
+                tr.innerHTML += `<td class="editable" onclick="editCell(${rowIndex}, 'late')"><span class="badge ${badgeClass}">${row.late}</span></td>`;
 
-            // 4. الأشهر (Loop)
-            row.months.forEach((status, monthIndex) => {
-                let statusClass = status.includes('✔') ? 'status-ok' : 'status-late';
-                // نضيف حدث النقر المزدوج فقط
-                tr.innerHTML += `<td class="editable ${statusClass}" 
-                                     ondblclick="toggleStatus(${rowIndex}, ${monthIndex})"
-                                     onclick="editMonthText(${rowIndex}, ${monthIndex})">
-                                     ${status}
-                                 </td>`;
+                row.months.forEach((status, monthIndex) => {
+                    let statusClass = status.includes('✔') ? 'status-ok' : 'status-late';
+                    tr.innerHTML += `<td class="editable ${statusClass}" 
+                                         ondblclick="toggleStatus(${rowIndex}, ${monthIndex})"
+                                         onclick="editMonthText(${rowIndex}, ${monthIndex})">
+                                         ${status}
+                                     </td>`;
+                });
+
+                tr.innerHTML += `<td class="editable note-text" onclick="editCell(${rowIndex}, 'notes')">${row.notes}</td>`;
+                tbody.appendChild(tr);
             });
-
-            // 5. الملاحظات
-            tr.innerHTML += `<td class="editable note-text" onclick="editCell(${rowIndex}, 'notes')">${row.notes}</td>`;
-
-            tbody.appendChild(tr);
-        });
+        }
     }
 
-    // تعديل النصوص والأرقام
-    window.editCell = function(rowIndex, field) {
+    // تعديل اسم الشهر
+    window.editHeader = function(index) {
         if (!window.isAdmin) return;
-        
-        let oldVal = window.currentData[rowIndex][field];
-        let newVal = prompt("تعديل القيمة:", oldVal);
-        
+        let oldVal = window.currentData.monthNames[index];
+        let newVal = prompt("تعديل اسم الشهر:", oldVal);
         if (newVal !== null) {
-            window.currentData[rowIndex][field] = newVal;
-            renderTable(window.currentData); // تحديث الواجهة فوراً
+            window.currentData.monthNames[index] = newVal;
+            renderTable(window.currentData);
         }
     };
-    
-    // تعديل نص الشهر (عند النقر مرة واحدة)
-    window.editMonthText = function(rowIndex, monthIndex) {
-         if (!window.isAdmin) return;
-         // لا نفعل شيئاً هنا، نترك النقر المزدوج للتبديل، 
-         // لكن إذا أراد تغيير الرمز يدوياً يمكن عمل كود هنا.
-         // سنكتفي بالنقر المزدوج للتبديل السريع.
-    }
 
-    // تبديل الحالة عند النقر المزدوج (✔ <-> ✘)
+    window.editCell = function(rowIndex, field) {
+        if (!window.isAdmin) return;
+        let oldVal = window.currentData.rows[rowIndex][field];
+        let newVal = prompt("تعديل القيمة:", oldVal);
+        if (newVal !== null) {
+            window.currentData.rows[rowIndex][field] = newVal;
+            renderTable(window.currentData);
+        }
+    };
+
+    // هذا اختياري اذا حبيت تعدل الرموز يدويا
+    window.editMonthText = function(rowIndex, monthIndex) { }
+
     window.toggleStatus = function(rowIndex, monthIndex) {
         if (!window.isAdmin) return;
-        
-        let currentStatus = window.currentData[rowIndex].months[monthIndex];
-        
+        let currentStatus = window.currentData.rows[rowIndex].months[monthIndex];
         if (currentStatus.includes('✔')) {
-            window.currentData[rowIndex].months[monthIndex] = '✘';
+            window.currentData.rows[rowIndex].months[monthIndex] = '✘';
         } else {
-            window.currentData[rowIndex].months[monthIndex] = '✔';
+            window.currentData.rows[rowIndex].months[monthIndex] = '✔';
         }
-        
         renderTable(window.currentData);
     };
 </script>
