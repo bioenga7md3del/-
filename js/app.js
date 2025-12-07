@@ -14,7 +14,7 @@ onValue(dbRef, (snapshot) => {
     const loader = document.getElementById('loader');
     const table = document.getElementById('mainTable');
     
-    // إخفاء شاشة التحميل دائماً للسماح بالدخول
+    // إخفاء شاشة التحميل دائماً
     if (loader) loader.style.display = 'none';
 
     if (data) {
@@ -22,9 +22,17 @@ onValue(dbRef, (snapshot) => {
         window.appData.contracts = data.contracts || {};
         window.appData.monthNames = data.monthNames || [];
         
-        // محاولة تحديث العرض
+        // --- التعديل هنا: رسم الجدول دائماً سواء مسجل دخول أو لا ---
         try {
-            if (window.userRole) refreshAllViews(); // تحديث فقط إذا كان مسجلاً للدخول
+            renderTable(); // رسم الجدول (عرض فقط للزوار، وتعديل للأدمن)
+            updateStats(); // تحديث الإحصائيات
+            
+            // تحديث بطاقات الإدارة فقط إذا كان هناك مستخدم
+            if (window.userRole) {
+                renderContractsCards();
+                renderContractorsCards();
+            }
+
             if (table) table.style.display = 'table';
         } catch (e) {
             console.error("خطأ في العرض:", e);
@@ -46,15 +54,12 @@ onValue(ref(db, 'app_settings/passwords'), (s) => {
 
 // --- 2. نظام التوجيه (Navigation) ---
 window.switchView = function(viewId) {
-    // إخفاء كل الأقسام
     document.querySelectorAll('.page-section').forEach(el => el.classList.remove('active'));
     document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
     
-    // إظهار القسم المطلوب
     const target = document.getElementById(viewId);
     if(target) target.classList.add('active');
     
-    // تلوين التبويب
     const navMap = { 'dashboard-view': 0, 'contracts-view': 1, 'contractors-view': 2 };
     const navItems = document.querySelectorAll('.nav-item');
     if(navItems[navMap[viewId]]) navItems[navMap[viewId]].classList.add('active');
@@ -71,7 +76,6 @@ function refreshAllViews() {
 window.renderTable = function() {
     const { contracts, contractors, monthNames } = window.appData;
     
-    // التأكد من وجود عناصر البحث
     const searchHospEl = document.getElementById('searchHospital');
     const searchContEl = document.getElementById('searchContractor');
     if (!searchHospEl || !searchContEl) return;
@@ -95,7 +99,12 @@ window.renderTable = function() {
     if (Array.isArray(monthNames) && monthNames.length > 0) {
         monthNames.forEach(m => headerHTML += `<th style="min-width:100px">${m}</th>`);
     } else {
-        headerHTML += `<th style="background:var(--warning); color:#333;">⚠️ يرجى تحديث الشهور</th>`;
+        // رسالة تظهر فقط للأدمن، أما الزائر يرى الجدول فارغاً بشكل عادي
+        if(window.userRole === 'super') {
+            headerHTML += `<th style="background:var(--warning); color:#333;">⚠️ يرجى تحديث الشهور</th>`;
+        } else {
+            headerHTML += `<th>-</th>`;
+        }
     }
     
     headerHTML += `<th style="min-width:150px">ملاحظات</th>`;
@@ -117,11 +126,9 @@ window.renderTable = function() {
             const tr = document.createElement('tr');
             tr.className = row.type === 'طبي' ? 'row-medical' : 'row-non-medical';
             
-            // حساب المتأخرات
             const late = (row.months||[]).filter(m => m && m.financeStatus === 'late').length;
             const badge = late > 0 ? 'badge-red' : 'badge-green';
             
-            // --- بيانات التلميح (Tooltip Data) ---
             let valFmt = '-';
             if(row.value) valFmt = Number(row.value).toLocaleString();
             
@@ -144,7 +151,6 @@ window.renderTable = function() {
                 <td><span class="badge ${badge}">${late}</span></td>
             `;
 
-            // خلايا الشهور
             if (Array.isArray(monthNames) && monthNames.length > 0) {
                 monthNames.forEach((mName, idx) => {
                     const md = (row.months && row.months[idx]) ? row.months[idx] : {financeStatus:'late'};
@@ -176,7 +182,6 @@ window.renderTable = function() {
         }
     });
     
-    // تحديث الداش بورد بناءً على الفلتر الحالي
     updateDashboard(rowsArr.filter(row => {
         const cName = (contractors[row.contractorId]?.name) || "";
         return row.hospital.toLowerCase().includes(searchHosp) && 
@@ -198,13 +203,11 @@ function updateDashboard(rows) {
     
     const compliance = totalCells > 0 ? Math.round((totalSubmitted / totalCells) * 100) : 0;
 
-    // تحديث النصوص في HTML
     const elHosp = document.getElementById('countHospitals'); if(elHosp) elHosp.innerText = uniqueHospitals;
     const elCont = document.getElementById('countContracts'); if(elCont) elCont.innerText = rows.length;
     const elLate = document.getElementById('countLate'); if(elLate) elLate.innerText = totalLate;
     const elComp = document.getElementById('complianceRate'); if(elComp) elComp.innerText = compliance + '%';
 
-    // تحديث الرسم البياني
     const canvas = document.getElementById('kpiChart');
     if (canvas) {
         const ctx = canvas.getContext('2d');
@@ -332,18 +335,31 @@ window.handleKpiCell = async function(cid, midx) {
     if(!c.months || !c.months[midx]) { showToast("حدث الشهور أولاً"); return; }
     
     const m = c.months[midx];
+    const curStatus = m.financeStatus || 'late';
+
     const {value:v} = await Swal.fire({
         title: window.appData.monthNames[midx],
-        html: `<select id="sw-st" class="form-control"><option value="late" ${m.financeStatus==='late'?'selected':''}>متأخر</option><option value="sent" ${m.financeStatus==='sent'?'selected':''}>تم الرفع</option><option value="returned" ${m.financeStatus==='returned'?'selected':''}>إعادة</option></select><input id="sw-cn" class="form-control" placeholder="رقم المطالبة" value="${m.claimNum||''}" style="margin-top:5px;"><input id="sw-ln" class="form-control" placeholder="رقم الخطاب" value="${m.letterNum||''}" style="margin-top:5px;"><input id="sw-dt" class="form-control" type="date" value="${m.submissionDate||''}" style="margin-top:5px;"><input id="sw-nt" class="form-control" placeholder="ملاحظات" value="${m.returnNotes||''}" style="margin-top:5px;">`,
+        html: `
+            <select id="sw-st" class="form-control" onchange="document.getElementById('note-area').style.display = this.value==='returned'?'block':'none'">
+                <option value="late" ${curStatus==='late'?'selected':''}>متأخر</option>
+                <option value="sent" ${curStatus==='sent'?'selected':''}>تم الرفع</option>
+                <option value="returned" ${curStatus==='returned'?'selected':''}>إعادة</option>
+            </select>
+            <input id="sw-cn" class="form-control" placeholder="رقم المطالبة" value="${m.claimNum||''}" style="margin-top:5px;">
+            <input id="sw-ln" class="form-control" placeholder="رقم الخطاب" value="${m.letterNum||''}" style="margin-top:5px;">
+            <input id="sw-dt" class="form-control" type="date" value="${m.submissionDate||''}" style="margin-top:5px;">
+            
+            <div id="note-area" style="display:${curStatus==='returned'?'block':'none'}; margin-top:5px;">
+                <input id="sw-nt" class="form-control" placeholder="سبب الإعادة/ملاحظات" value="${m.returnNotes||''}">
+            </div>
+        `,
         preConfirm: () => ({ financeStatus:document.getElementById('sw-st').value, claimNum:document.getElementById('sw-cn').value, letterNum:document.getElementById('sw-ln').value, submissionDate:document.getElementById('sw-dt').value, returnNotes:document.getElementById('sw-nt').value })
     });
     
     if(v) {
         update(ref(db, `app_db_v2/contracts/${cid}/months/${midx}`), v).then(() => {
-            // تحديث محلي سريع
             window.appData.contracts[cid].months[midx] = v;
-            renderTable(); 
-            showToast("تم");
+            renderTable(); showToast("تم");
         });
     }
 };
@@ -361,13 +377,11 @@ window.refreshMonthsSystem = async function() {
     const now = new Date();
     const arM = ["يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو", "يوليو", "أغسطس", "سبتمبر", "أكتوبر", "نوفمبر", "ديسمبر"];
     let mNames = [];
-    // من يناير حتى الشهر الحالي
     for(let i=0; i<now.getMonth(); i++) mNames.push(`${arM[i]} ${now.getFullYear()}`);
     mNames.reverse();
     
     const u = {'app_db_v2/monthNames': mNames};
     Object.entries(window.appData.contracts).forEach(([id, c]) => {
-        // التأكد من أن كل عقد لديه عدد شهور مطابق للجدول
         const adj = new Array(mNames.length).fill(null).map((_,i) => (c.months||[])[i] || {status:"late", financeStatus:"late", claimNum:"", letterNum:"", submissionDate:"", returnNotes:""});
         u[`app_db_v2/contracts/${id}/months`] = adj;
     });
@@ -390,7 +404,7 @@ window.changePasswords = async function() {
         html:
             '<label>المدير العام</label><input id="p1" class="swal2-input" value="' + window.appPasswords.super + '">' +
             '<label>مشرف طبي</label><input id="p2" class="swal2-input" value="' + window.appPasswords.medical + '">' +
-            '<label>مشرف غير طبي</label><input id="p3" class="swal2-input" value="' + window.appPasswords.non_medical + '">',
+            '<label>مشرف غير الطبي</label><input id="p3" class="swal2-input" value="' + window.appPasswords.non_medical + '">',
         focusConfirm: false, showCancelButton: true, confirmButtonText: 'حفظ',
         preConfirm: () => ({ super: document.getElementById('p1').value, medical: document.getElementById('p2').value, non_medical: document.getElementById('p3').value })
     });
@@ -423,7 +437,9 @@ window.adminLogin = async function() {
     document.getElementById('dashboardControls').classList.remove('hidden');
     document.getElementById('loginBtn').classList.add('hidden');
     document.getElementById('logoutBtn').classList.remove('hidden');
-    document.getElementById('roleDisplay').innerText = (window.userRole==='super') ? '(مدير عام)' : '(مشرف)';
+    
+    const roleName = window.userRole==='super' ? '(مدير عام)' : (window.userRole==='medical' ? '(مشرف طبي)' : '(مشرف غير طبي)');
+    document.getElementById('roleDisplay').innerText = roleName;
     
     document.querySelectorAll('.super-admin-only').forEach(b => b.style.display = window.userRole === 'super' ? 'inline-block' : 'none');
     document.querySelectorAll('.restricted-tab').forEach(t => t.style.display = window.userRole === 'super' ? 'block' : 'none');
