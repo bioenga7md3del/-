@@ -3,7 +3,6 @@ export function initTooltip() {
     if (!document.getElementById('global-tooltip')) {
         const div = document.createElement('div');
         div.id = 'global-tooltip';
-        // ستايل التلميح العائم
         div.style.cssText = "position:fixed; background:rgba(44,62,80,0.95); color:#fff; padding:10px 15px; border-radius:8px; font-size:12px; z-index:9999; pointer-events:none; display:none; white-space:pre-line; box-shadow:0 4px 15px rgba(0,0,0,0.3); text-align:right;";
         document.body.appendChild(div);
     }
@@ -38,7 +37,7 @@ function getContractStatus(start, end) {
     return { text: "ساري", badge: "badge-green" };
 }
 
-// --- رسم الجدول الرئيسي ---
+// --- رسم الجدول الرئيسي (مع الترتيب) ---
 export function renderTable(appData, userRole, canEditFunc) {
     const { contracts, contractors, monthNames } = appData;
     const sHosp = document.getElementById('searchHospital')?.value.toLowerCase() || "";
@@ -65,14 +64,29 @@ export function renderTable(appData, userRole, canEditFunc) {
         return;
     }
 
+    // 1. الفلترة (Filtering)
     const filtered = rows.filter(r => {
         const cName = contractors[r.contractorId]?.name || "";
-        const cTitle = r.contractName || r.hospital || ""; // دعم الاسم القديم والجديد
+        const cTitle = r.contractName || r.hospital || "";
         return (cTitle).toLowerCase().includes(sHosp) && 
                cName.toLowerCase().includes(sCont) && 
                (filter === 'all' || r.type === filter);
     });
 
+    // 2. الترتيب (Sorting) - هذا هو التعديل الجديد
+    filtered.sort((a, b) => {
+        const nameA = a.contractName || a.hospital || "";
+        const nameB = b.contractName || b.hospital || "";
+        
+        // ترتيب أبجدي حسب اسم العقد/المستشفى
+        const nameCompare = nameA.localeCompare(nameB, 'ar');
+        if (nameCompare !== 0) return nameCompare;
+        
+        // إذا تشابه الاسم، رتب حسب النوع (طبي ثم غير طبي أو العكس)
+        return (a.type || "").localeCompare(b.type || "", 'ar');
+    });
+
+    // 3. الرسم (Rendering)
     filtered.forEach(row => {
         const cName = contractors[row.contractorId]?.name || "غير معروف";
         const cTitle = row.contractName || row.hospital || "بدون اسم";
@@ -82,7 +96,6 @@ export function renderTable(appData, userRole, canEditFunc) {
         let valFmt = row.value ? Number(row.value).toLocaleString() : '-';
         const st = getContractStatus(row.startDate, row.endDate);
 
-        // بيانات التلميح العائم
         const tip = `📄 رقم العقد: ${row.contractNumber||'-'}\n💰 القيمة: ${valFmt} ريال\n⏳ المدة: ${row.duration||'-'}\n📅 البداية: ${row.startDate||'-'}\n📅 النهاية: ${row.endDate||'-'}\n📊 الحالة: ${st.text}`;
 
         const tr = document.createElement('tr');
@@ -121,20 +134,26 @@ export function renderTable(appData, userRole, canEditFunc) {
         tbody.appendChild(tr);
     });
 
-    return filtered; // نرجع البيانات المفلترة لتحديث الإحصائيات
+    return filtered;
 }
 
-// --- رسم الكروت (إدارة العقود والمقاولين) ---
+// --- رسم البطاقات الإدارية ---
 export function renderCards(appData, type) {
     const grid = document.getElementById(type === 'contract' ? 'contractsGrid' : 'contractorsGrid');
     if (!grid) return;
     grid.innerHTML = '';
 
     if (type === 'contract') {
-        Object.entries(appData.contracts).forEach(([id, row]) => {
+        const sortedContracts = Object.entries(appData.contracts).sort(([,a], [,b]) => {
+            const nA = a.contractName || a.hospital || "";
+            const nB = b.contractName || b.hospital || "";
+            return nA.localeCompare(nB, 'ar');
+        });
+
+        sortedContracts.forEach(([id, row]) => {
             const cName = appData.contractors[row.contractorId]?.name || "-";
             const st = getContractStatus(row.startDate, row.endDate);
-            const name = row.contractName || row.hospital; // Fallback
+            const name = row.contractName || row.hospital;
 
             const div = document.createElement('div'); div.className = 'data-card';
             div.innerHTML = `
@@ -160,39 +179,34 @@ export function renderCards(appData, type) {
     }
 }
 
-// --- تحديث الإحصائيات (معدلة لحساب الحالة) ---
+// --- تحديث الإحصائيات ---
 export function updateStats(rows, appData) {
     if (!rows || !appData) return;
     
-    // حساب المتأخرات والمرفوعات
     const totalLate = rows.reduce((s, r) => s + ((r.months||[]).filter(m => m && m.financeStatus === 'late').length), 0);
     const totalCells = rows.length * (appData.monthNames ? appData.monthNames.length : 1);
     let totalSubmitted = 0;
-    
-    // حساب حالة العقود
     let active = 0, expired = 0;
 
     rows.forEach(r => {
         const st = getContractStatus(r.startDate, r.endDate);
         if(st.text === 'ساري') active++;
         if(st.text === 'منتهي') expired++;
-
         (r.months||[]).forEach(m => { if(m && m.financeStatus === 'sent') totalSubmitted++; });
     });
     
-    // تحديث الواجهة
-    const elHosp = document.getElementById('countHospitals'); if(elHosp) elHosp.innerText = new Set(rows.map(r=>r.hospital)).size; // ملاحظة: نستخدم hospital كمعرف للموقع
+    const elHosp = document.getElementById('countHospitals'); if(elHosp) elHosp.innerText = new Set(rows.map(r=>r.hospital)).size;
     const elCont = document.getElementById('countContracts'); if(elCont) elCont.innerText = rows.length;
     const elLate = document.getElementById('countLate'); if(elLate) elLate.innerText = totalLate;
-    
     const elActive = document.getElementById('countActive'); if(elActive) elActive.innerText = active;
     const elExpired = document.getElementById('countExpired'); if(elExpired) elExpired.innerText = expired;
     
     const elComp = document.getElementById('complianceRate'); 
     if(elComp) elComp.innerText = totalCells > 0 ? Math.round((totalSubmitted/totalCells)*100)+'%' : '0%';
 
-    const ctx = document.getElementById('kpiChart')?.getContext('2d');
-    if (ctx) {
+    const canvas = document.getElementById('kpiChart');
+    if (canvas) {
+        const ctx = canvas.getContext('2d');
         if(window.myChart) window.myChart.destroy();
         window.myChart = new Chart(ctx, { type: 'doughnut', data: { labels:['مرفوع','متأخر'], datasets:[{data:[totalSubmitted, totalCells-totalSubmitted], backgroundColor:['#27ae60','#c0392b']}] }, options: { maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } } });
     }
