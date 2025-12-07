@@ -23,7 +23,7 @@
         </div>
 
         <div id="adminControls" class="admin-controls">
-            <button class="btn-purple super-admin-only" onclick="openModal('contractorModal')">👷 إضافة مقاول</button>
+            <button class="btn-purple super-admin-only" onclick="openModal('contractorModal')">👷 إدارة المقاولين</button>
             <button class="btn-success super-admin-only" onclick="openModal('contractModal')">➕ إضافة عقد جديد</button>
             <button class="btn-primary super-admin-only" onclick="refreshMonthsSystem()">📅 تحديث الشهور (السنة الحالية)</button>
             <button class="btn-warning super-admin-only" onclick="systemReset()">⚠ تهيئة النظام</button>
@@ -45,10 +45,12 @@
         <div class="stat-card"><span class="stat-number" id="countLate" style="color:var(--danger)">0</span><span class="stat-label">المتأخرات</span></div>
     </div>
 
-    <div class="toolbar-section" style="display: flex; gap: 10px; margin-bottom: 20px;">
-        <input type="text" id="searchBox" class="form-control" placeholder="بحث شامل (المستشفى / المقاول)..." onkeyup="renderTable()">
-        <select id="typeFilter" class="form-control" style="width: auto;" onchange="renderTable()">
-            <option value="all">الكل</option>
+    <div class="toolbar-section" style="display: flex; gap: 10px; margin-bottom: 20px; flex-wrap:wrap;">
+        <input type="text" id="searchHospital" class="form-control" style="flex:1; min-width: 200px;" placeholder="بحث بالمستشفى..." onkeyup="renderTable()">
+        <input type="text" id="searchContractor" class="form-control" style="flex:1; min-width: 200px;" placeholder="بحث بالمقاول..." onkeyup="renderTable()">
+        
+        <select id="typeFilter" class="form-control" style="width: auto; min-width: 150px;" onchange="renderTable()">
+            <option value="all">كل العقود</option>
             <option value="طبي">عقود طبية</option>
             <option value="غير طبي">عقود غير طبية</option>
         </select>
@@ -76,9 +78,8 @@
         <div class="modal-body">
             <div class="form-group">
                 <label>اسم الموقع / المستشفى <span style="color:red">*</span></label>
-                <input type="text" id="form-hospital" class="form-control" placeholder="مثال: مستشفى الملك فهد">
+                <input type="text" id="form-hospital" class="form-control">
             </div>
-            
             <div style="display: flex; gap: 10px;">
                 <div class="form-group" style="flex:1">
                     <label>نوع العقد <span style="color:red">*</span></label>
@@ -89,35 +90,18 @@
                 </div>
                 <div class="form-group" style="flex:1">
                     <label>المقاول <span style="color:red">*</span></label>
-                    <select id="form-contractor" class="form-control">
-                        <option value="">اختر المقاول...</option>
-                    </select>
+                    <select id="form-contractor" class="form-control"><option value="">اختر...</option></select>
                 </div>
             </div>
-
             <div style="display: flex; gap: 10px;">
-                <div class="form-group" style="flex:1">
-                    <label>بداية العقد</label>
-                    <input type="date" id="form-start-date" class="form-control">
-                </div>
-                <div class="form-group" style="flex:1">
-                    <label>نهاية العقد</label>
-                    <input type="date" id="form-end-date" class="form-control">
-                </div>
+                <div class="form-group" style="flex:1"><label>بداية العقد</label><input type="date" id="form-start-date" class="form-control"></div>
+                <div class="form-group" style="flex:1"><label>نهاية العقد</label><input type="date" id="form-end-date" class="form-control"></div>
             </div>
-
-            <div class="form-group">
-                <label>قيمة العقد (ريال)</label>
-                <input type="number" id="form-value" class="form-control" placeholder="مثال: 500000">
-            </div>
-
-            <div class="form-group">
-                <label>رقم العقد المرجعي (اختياري)</label>
-                <input type="text" id="form-contract-num" class="form-control" placeholder="رقم العقد المرجعي">
-            </div>
+            <div class="form-group"><label>قيمة العقد (ريال)</label><input type="number" id="form-value" class="form-control"></div>
+            <div class="form-group"><label>رقم العقد (مرجع)</label><input type="text" id="form-contract-num" class="form-control"></div>
         </div>
         <div class="modal-footer">
-            <button class="btn-success" onclick="saveNewContract()">حفظ العقد</button>
+            <button class="btn-success" onclick="saveNewContract()">حفظ</button>
             <button class="btn-dark" onclick="closeModal('contractModal')">إلغاء</button>
         </div>
     </div>
@@ -125,22 +109,13 @@
 
 <div id="contractorModal" class="modal-overlay">
     <div class="modal-content">
-        <div class="modal-header">
-            <h3>إدارة المقاولين</h3>
-            <button class="close-btn" onclick="closeModal('contractorModal')">&times;</button>
-        </div>
+        <div class="modal-header"><h3>إدارة المقاولين</h3><button class="close-btn" onclick="closeModal('contractorModal')">&times;</button></div>
         <div class="modal-body">
-            <div class="form-group">
-                <label>إضافة مقاول جديد</label>
-                <div style="display: flex; gap: 10px;">
-                    <input type="text" id="form-new-contractor" class="form-control" placeholder="اسم الشركة...">
-                    <button class="btn-purple" onclick="saveNewContractor()">إضافة</button>
-                </div>
+            <div class="form-group" style="display:flex; gap:10px;">
+                <input type="text" id="form-new-contractor" class="form-control" placeholder="اسم الشركة...">
+                <button class="btn-purple" onclick="saveNewContractor()">إضافة</button>
             </div>
-            <hr>
-            <label>قائمة المقاولين الحاليين:</label>
-            <div id="contractorsList" style="max-height: 200px; overflow-y: auto; border: 1px solid #eee; padding: 10px; border-radius: 5px;">
-                </div>
+            <hr><div id="contractorsList" style="max-height:200px; overflow-y:auto;"></div>
         </div>
     </div>
 </div>
