@@ -1,8 +1,9 @@
-// --- تهيئة التلميح ---
+// --- تهيئة التلميح العائم ---
 export function initTooltip() {
     if (!document.getElementById('global-tooltip')) {
         const div = document.createElement('div');
         div.id = 'global-tooltip';
+        // ستايل التلميح العائم
         div.style.cssText = "position:fixed; background:rgba(44,62,80,0.95); color:#fff; padding:10px 15px; border-radius:8px; font-size:12px; z-index:9999; pointer-events:none; display:none; white-space:pre-line; box-shadow:0 4px 15px rgba(0,0,0,0.3); text-align:right;";
         document.body.appendChild(div);
     }
@@ -25,19 +26,19 @@ export function hideTooltip() {
     if (t) t.style.display = 'none';
 }
 
-// --- دالة مساعدة لحساب حالة العقد ---
+// --- دالة حساب حالة العقد ---
 function getContractStatus(start, end) {
-    if(!start || !end) return { text: "غير محدد", badge: "badge-grey", color: "#7f8c8d" };
+    if(!start || !end) return { text: "غير محدد", badge: "badge-grey" };
     const today = new Date();
     const sDate = new Date(start);
     const eDate = new Date(end);
     
-    if (today < sDate) return { text: "لم يبدأ", badge: "badge-orange", color: "#f39c12" };
-    if (today > eDate) return { text: "منتهي", badge: "badge-red", color: "#c0392b" };
-    return { text: "ساري", badge: "badge-green", color: "#27ae60" };
+    if (today < sDate) return { text: "لم يبدأ", badge: "badge-orange" };
+    if (today > eDate) return { text: "منتهي", badge: "badge-red" };
+    return { text: "ساري", badge: "badge-green" };
 }
 
-// --- رسم الجدول ---
+// --- رسم الجدول الرئيسي ---
 export function renderTable(appData, userRole, canEditFunc) {
     const { contracts, contractors, monthNames } = appData;
     const sHosp = document.getElementById('searchHospital')?.value.toLowerCase() || "";
@@ -60,13 +61,13 @@ export function renderTable(appData, userRole, canEditFunc) {
     const rows = Object.entries(contracts).map(([id, val]) => ({...val, id}));
     
     if (rows.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="15" style="padding:20px;color:#777">لا توجد بيانات</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="15" style="padding:20px;color:#777">لا توجد بيانات للعرض</td></tr>`;
         return;
     }
 
     const filtered = rows.filter(r => {
         const cName = contractors[r.contractorId]?.name || "";
-        const cTitle = r.contractName || r.hospital || ""; // دعم الاسم الجديد والقديم
+        const cTitle = r.contractName || r.hospital || ""; // دعم الاسم القديم والجديد
         return (cTitle).toLowerCase().includes(sHosp) && 
                cName.toLowerCase().includes(sCont) && 
                (filter === 'all' || r.type === filter);
@@ -81,6 +82,7 @@ export function renderTable(appData, userRole, canEditFunc) {
         let valFmt = row.value ? Number(row.value).toLocaleString() : '-';
         const st = getContractStatus(row.startDate, row.endDate);
 
+        // بيانات التلميح العائم
         const tip = `📄 رقم العقد: ${row.contractNumber||'-'}\n💰 القيمة: ${valFmt} ريال\n⏳ المدة: ${row.duration||'-'}\n📅 البداية: ${row.startDate||'-'}\n📅 النهاية: ${row.endDate||'-'}\n📊 الحالة: ${st.text}`;
 
         const tr = document.createElement('tr');
@@ -119,10 +121,10 @@ export function renderTable(appData, userRole, canEditFunc) {
         tbody.appendChild(tr);
     });
 
-    return filtered;
+    return filtered; // نرجع البيانات المفلترة لتحديث الإحصائيات
 }
 
-// --- رسم البطاقات الإدارية ---
+// --- رسم الكروت (إدارة العقود والمقاولين) ---
 export function renderCards(appData, type) {
     const grid = document.getElementById(type === 'contract' ? 'contractsGrid' : 'contractorsGrid');
     if (!grid) return;
@@ -132,7 +134,7 @@ export function renderCards(appData, type) {
         Object.entries(appData.contracts).forEach(([id, row]) => {
             const cName = appData.contractors[row.contractorId]?.name || "-";
             const st = getContractStatus(row.startDate, row.endDate);
-            const name = row.contractName || row.hospital;
+            const name = row.contractName || row.hospital; // Fallback
 
             const div = document.createElement('div'); div.className = 'data-card';
             div.innerHTML = `
@@ -158,19 +160,19 @@ export function renderCards(appData, type) {
     }
 }
 
-// --- تحديث الإحصائيات ---
+// --- تحديث الإحصائيات (معدلة لحساب الحالة) ---
 export function updateStats(rows, appData) {
-    // التأكد من وجود البيانات لتجنب الخطأ
     if (!rows || !appData) return;
-
-    // حساب الإحصائيات بأمان
+    
+    // حساب المتأخرات والمرفوعات
     const totalLate = rows.reduce((s, r) => s + ((r.months||[]).filter(m => m && m.financeStatus === 'late').length), 0);
     const totalCells = rows.length * (appData.monthNames ? appData.monthNames.length : 1);
     let totalSubmitted = 0;
+    
+    // حساب حالة العقود
     let active = 0, expired = 0;
 
     rows.forEach(r => {
-        // حساب حالة العقد
         const st = getContractStatus(r.startDate, r.endDate);
         if(st.text === 'ساري') active++;
         if(st.text === 'منتهي') expired++;
@@ -178,20 +180,19 @@ export function updateStats(rows, appData) {
         (r.months||[]).forEach(m => { if(m && m.financeStatus === 'sent') totalSubmitted++; });
     });
     
-    // تحديث العناصر في الـ HTML (فحص الوجود أولاً)
-    const elHosp = document.getElementById('countHospitals'); if(elHosp) elHosp.innerText = new Set(rows.map(r=>r.hospital)).size;
+    // تحديث الواجهة
+    const elHosp = document.getElementById('countHospitals'); if(elHosp) elHosp.innerText = new Set(rows.map(r=>r.hospital)).size; // ملاحظة: نستخدم hospital كمعرف للموقع
     const elCont = document.getElementById('countContracts'); if(elCont) elCont.innerText = rows.length;
     const elLate = document.getElementById('countLate'); if(elLate) elLate.innerText = totalLate;
+    
     const elActive = document.getElementById('countActive'); if(elActive) elActive.innerText = active;
     const elExpired = document.getElementById('countExpired'); if(elExpired) elExpired.innerText = expired;
     
     const elComp = document.getElementById('complianceRate'); 
     if(elComp) elComp.innerText = totalCells > 0 ? Math.round((totalSubmitted/totalCells)*100)+'%' : '0%';
 
-    // تحديث الشارت
-    const canvas = document.getElementById('kpiChart');
-    if (canvas) {
-        const ctx = canvas.getContext('2d');
+    const ctx = document.getElementById('kpiChart')?.getContext('2d');
+    if (ctx) {
         if(window.myChart) window.myChart.destroy();
         window.myChart = new Chart(ctx, { type: 'doughnut', data: { labels:['مرفوع','متأخر'], datasets:[{data:[totalSubmitted, totalCells-totalSubmitted], backgroundColor:['#27ae60','#c0392b']}] }, options: { maintainAspectRatio: false, plugins: { legend: { position: 'bottom' } } } });
     }
