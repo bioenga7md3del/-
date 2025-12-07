@@ -3,7 +3,7 @@ import { db } from "./config.js";
 
 // --- الحالة العامة (Global State) ---
 window.appData = { contractors: {}, contracts: {}, monthNames: [] };
-window.userRole = null;
+window.userRole = null; // super, medical, non_medical, viewer
 window.appPasswords = { super: '1234', medical: '1111', non_medical: '2222' };
 let myChart = null;
 
@@ -12,9 +12,8 @@ const dbRef = ref(db, 'app_db_v2');
 onValue(dbRef, (snapshot) => {
     const data = snapshot.val();
     const loader = document.getElementById('loader');
-    const table = document.getElementById('mainTable');
     
-    // إخفاء شاشة التحميل دائماً
+    // إخفاء شاشة التحميل فوراً للسماح بالدخول
     if (loader) loader.style.display = 'none';
 
     if (data) {
@@ -22,25 +21,21 @@ onValue(dbRef, (snapshot) => {
         window.appData.contracts = data.contracts || {};
         window.appData.monthNames = data.monthNames || [];
         
-        // --- التعديل هنا: رسم الجدول دائماً سواء مسجل دخول أو لا ---
+        // تحديث البيانات في الخلفية دائماً
         try {
-            renderTable(); // رسم الجدول (عرض فقط للزوار، وتعديل للأدمن)
-            updateStats(); // تحديث الإحصائيات
-            
-            // تحديث بطاقات الإدارة فقط إذا كان هناك مستخدم
+            // إذا كان المستخدم مسجلاً للدخول بالفعل، نحدث العرض
             if (window.userRole) {
-                renderContractsCards();
-                renderContractorsCards();
+                renderTable();
+                updateStats();
+                // تحديث القوائم فقط للأدمن
+                if (window.userRole !== 'viewer') {
+                    renderContractsCards();
+                    renderContractorsCards();
+                }
             }
-
-            if (table) table.style.display = 'table';
         } catch (e) {
-            console.error("خطأ في العرض:", e);
+            console.error("خطأ في تحديث البيانات:", e);
         }
-    } else {
-        // قاعدة بيانات جديدة
-        window.appData = { contractors: {}, contracts: {}, monthNames: [] };
-        if (table) table.style.display = 'table';
     }
 }, (error) => {
     console.error("Firebase Error:", error);
@@ -52,13 +47,73 @@ onValue(ref(db, 'app_settings/passwords'), (s) => {
     if(s.exists()) window.appPasswords = s.val(); 
 });
 
-// --- 2. نظام التوجيه (Navigation) ---
+// --- 2. تسجيل الدخول (تم إضافة كود 0000) ---
+window.adminLogin = async function() {
+    const { value: pass } = await Swal.fire({
+        title: 'تسجيل الدخول',
+        input: 'password',
+        inputLabel: 'أدخل كلمة المرور (أو 0000 للمشاهدة)',
+        confirmButtonText: 'دخول',
+        confirmButtonColor: '#3498db'
+    });
+
+    if (!pass) return;
+
+    const cleanPass = String(pass).trim();
+    let roleName = "";
+
+    // التحقق من الصلاحيات
+    if (cleanPass === '0000') {
+        window.userRole = 'viewer';
+        roleName = "(زائر - عرض فقط)";
+    } 
+    else if (cleanPass == window.appPasswords.super) { 
+        window.userRole = 'super'; roleName = "(مدير عام)"; 
+    } 
+    else if (cleanPass == window.appPasswords.medical) { 
+        window.userRole = 'medical'; roleName = "(مشرف طبي)"; 
+    } 
+    else if (cleanPass == window.appPasswords.non_medical) { 
+        window.userRole = 'non_medical'; roleName = "(مشرف غير طبي)"; 
+    } 
+    else { 
+        Swal.fire('خطأ', 'كلمة المرور غير صحيحة', 'error'); 
+        return; 
+    }
+
+    // إظهار واجهة النظام
+    document.getElementById('loginSection').classList.add('hidden');
+    document.getElementById('dashboardControls').classList.remove('hidden');
+    document.getElementById('loginBtn').classList.add('hidden');
+    document.getElementById('logoutBtn').classList.remove('hidden');
+    
+    const roleDisplay = document.getElementById('roleDisplay');
+    if(roleDisplay) roleDisplay.innerText = roleName;
+
+    // التحكم في ظهور العناصر حسب الصلاحية
+    if (window.userRole === 'viewer') {
+        // الزائر يرى الجدول والداشبورد فقط، ولا يرى أزرار التحكم
+        document.querySelectorAll('.super-admin-only').forEach(b => b.style.display = 'none');
+        document.querySelectorAll('.restricted-tab').forEach(t => t.style.display = 'none'); // إخفاء تبويبات الإدارة
+    } else {
+        // الأدمن يرى حسب صلاحيته
+        document.querySelectorAll('.super-admin-only').forEach(b => b.style.display = window.userRole === 'super' ? 'inline-block' : 'none');
+        document.querySelectorAll('.restricted-tab').forEach(t => t.style.display = window.userRole === 'super' ? 'block' : 'none');
+    }
+    
+    // إجبار الجدول على الظهور
+    document.getElementById('mainTable').style.display = 'table';
+    refreshAllViews();
+    
+    Swal.fire({ icon: 'success', title: 'تم الدخول', text: roleName, timer: 1500, showConfirmButton: false });
+};
+
+// --- 3. نظام التوجيه ---
 window.switchView = function(viewId) {
     document.querySelectorAll('.page-section').forEach(el => el.classList.remove('active'));
     document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
     
-    const target = document.getElementById(viewId);
-    if(target) target.classList.add('active');
+    document.getElementById(viewId).classList.add('active');
     
     const navMap = { 'dashboard-view': 0, 'contracts-view': 1, 'contractors-view': 2 };
     const navItems = document.querySelectorAll('.nav-item');
@@ -67,28 +122,31 @@ window.switchView = function(viewId) {
 
 function refreshAllViews() {
     renderTable(); 
-    renderContractsCards(); 
-    renderContractorsCards(); 
     updateStats();
+    
+    // لا نحمل جداول الإدارة للزوار لتخفيف الحمل
+    if (window.userRole !== 'viewer') {
+        renderContractsCards(); 
+        renderContractorsCards(); 
+    }
 }
 
-// --- 3. رسم الجدول الرئيسي (Dashboard Table) ---
+// --- 4. رسم الجدول الرئيسي ---
 window.renderTable = function() {
     const { contracts, contractors, monthNames } = window.appData;
     
     const searchHospEl = document.getElementById('searchHospital');
-    const searchContEl = document.getElementById('searchContractor');
-    if (!searchHospEl || !searchContEl) return;
+    if (!searchHospEl) return;
 
     const searchHosp = searchHospEl.value.toLowerCase();
-    const searchCont = searchContEl.value.toLowerCase();
+    const searchCont = document.getElementById('searchContractor').value.toLowerCase();
     const filter = document.getElementById('typeFilter').value;
 
     const hRow = document.getElementById('headerRow');
     const tbody = document.getElementById('tableBody');
     if(!hRow || !tbody) return;
 
-    // رسم الهيدر
+    // Header
     let headerHTML = `
         <th class="sticky-col-1">الموقع</th>
         <th class="sticky-col-2">النوع</th>
@@ -99,26 +157,25 @@ window.renderTable = function() {
     if (Array.isArray(monthNames) && monthNames.length > 0) {
         monthNames.forEach(m => headerHTML += `<th style="min-width:100px">${m}</th>`);
     } else {
-        // رسالة تظهر فقط للأدمن، أما الزائر يرى الجدول فارغاً بشكل عادي
-        if(window.userRole === 'super') {
-            headerHTML += `<th style="background:var(--warning); color:#333;">⚠️ يرجى تحديث الشهور</th>`;
-        } else {
-            headerHTML += `<th>-</th>`;
-        }
+        headerHTML += `<th>لا توجد فترات</th>`;
     }
     
     headerHTML += `<th style="min-width:150px">ملاحظات</th>`;
     hRow.innerHTML = headerHTML;
 
-    // رسم الصفوف
+    // Body
     tbody.innerHTML = '';
     const rowsArr = Object.entries(contracts).map(([id, val]) => ({...val, id}));
 
+    // إذا لم توجد بيانات
+    if (rowsArr.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="10" style="padding:20px; color:#777;">لا توجد بيانات للعرض</td></tr>`;
+        return;
+    }
+
     rowsArr.forEach(row => {
         const cName = (contractors[row.contractorId]?.name) || "غير معروف";
-        const hospName = row.hospital || "بدون اسم";
-        
-        const match = hospName.toLowerCase().includes(searchHosp) && 
+        const match = row.hospital.toLowerCase().includes(searchHosp) && 
                       cName.toLowerCase().includes(searchCont) && 
                       (filter === 'all' || row.type === filter);
 
@@ -140,7 +197,7 @@ window.renderTable = function() {
             `.trim();
 
             tr.innerHTML = `
-                <td class="sticky-col-1">${hospName}</td>
+                <td class="sticky-col-1">${row.hospital}</td>
                 <td class="sticky-col-2">
                     <div class="tooltip-container">
                         <span class="contract-tag ${row.type==='طبي'?'tag-med':'tag-non'}">${row.type}</span>
@@ -165,8 +222,12 @@ window.renderTable = function() {
                         ti=`إعادة للموقع!\nالسبب: ${md.returnNotes||'-'}`; 
                     }
                     
-                    tr.innerHTML += `<td class="${cl}">
-                        <div class="tooltip-container" onclick="handleKpiCell('${row.id}', ${idx})">
+                    // إضافة Click Event فقط إذا كان للمستخدم صلاحية تعديل
+                    const clickAction = canEdit(row.type) ? `onclick="handleKpiCell('${row.id}', ${idx})"` : '';
+                    const cursorStyle = canEdit(row.type) ? "cursor:pointer" : "cursor:default";
+
+                    tr.innerHTML += `<td class="${cl}" style="${cursorStyle}">
+                        <div class="tooltip-container" ${clickAction}>
                             <span>${ic}</span>
                             <span class="tooltip-text">${ti}</span>
                         </div>
@@ -177,7 +238,8 @@ window.renderTable = function() {
             }
 
             const en = canEdit(row.type) ? `onclick="editNote('${row.id}')"` : '';
-            tr.innerHTML += `<td ${en} style="cursor:pointer; font-size:11px;">${row.notes||''}</td>`;
+            const noteCursor = canEdit(row.type) ? "cursor:pointer" : "cursor:default";
+            tr.innerHTML += `<td ${en} style="${noteCursor}; font-size:11px;">${row.notes||''}</td>`;
             tbody.appendChild(tr);
         }
     });
@@ -190,7 +252,7 @@ window.renderTable = function() {
     }));
 };
 
-// --- 4. لوحة الإحصائيات (Dashboard Stats) ---
+// --- 5. لوحة الإحصائيات ---
 function updateDashboard(rows) {
     if(!rows) return;
     
@@ -223,11 +285,19 @@ function updateDashboard(rows) {
     }
 }
 
-// --- 5. إدارة العقود والمقاولين (Cards) ---
+// --- 6. صلاحيات التعديل (الأهم) ---
+function canEdit(type) {
+    if(window.userRole === 'viewer') return false; // الزائر لا يعدل أبداً
+    if(window.userRole === 'super') return true;
+    if(window.userRole === 'medical' && type === 'طبي') return true;
+    if(window.userRole === 'non_medical' && type === 'غير طبي') return true;
+    return false;
+}
+
+// --- 7. إدارة البطاقات (للأدمن فقط) ---
 function renderContractsCards() {
     const grid = document.getElementById('contractsGrid');
     if(!grid) return; grid.innerHTML = '';
-    
     Object.entries(window.appData.contracts).forEach(([id, row]) => {
         const cName = window.appData.contractors[row.contractorId]?.name || "غير معروف";
         const valFmt = row.value ? Number(row.value).toLocaleString() : '-';
@@ -258,7 +328,7 @@ function renderContractorsCards() {
     });
 }
 
-// --- 6. عمليات الإضافة والحفظ (CRUD) ---
+// --- 8. عمليات النظام (CRUD) ---
 window.saveContract = function() {
     const id = document.getElementById('form-contract-id').value;
     const hosp = document.getElementById('form-hospital').value;
@@ -275,12 +345,11 @@ window.saveContract = function() {
         contractNumber: document.getElementById('form-contract-num').value
     };
 
-    if (id) { // تعديل
+    if (id) {
         const existing = window.appData.contracts[id];
-        data.months = existing.months || []; 
-        data.notes = existing.notes || "";
+        data.months = existing.months || []; data.notes = existing.notes || "";
         update(ref(db, `app_db_v2/contracts/${id}`), data).then(() => { showToast("تم التعديل"); closeModal('contractModal'); });
-    } else { // جديد
+    } else {
         const mCount = window.appData.monthNames.length;
         data.months = Array(mCount).fill().map(() => ({ status: "late", financeStatus: "late", claimNum: "", letterNum: "", submissionDate: "", returnNotes: "" }));
         data.notes = "";
@@ -288,6 +357,31 @@ window.saveContract = function() {
     }
 };
 
+window.handleKpiCell = async function(cid, midx) {
+    if(!canEdit(window.appData.contracts[cid].type)) return; // حماية إضافية
+    
+    const m = window.appData.contracts[cid].months[midx];
+    const {value:v} = await Swal.fire({
+        title: window.appData.monthNames[midx],
+        html: `<select id="sw-st" class="form-control"><option value="late" ${m.financeStatus==='late'?'selected':''}>متأخر</option><option value="sent" ${m.financeStatus==='sent'?'selected':''}>تم الرفع</option><option value="returned" ${m.financeStatus==='returned'?'selected':''}>إعادة</option></select><input id="sw-cn" class="form-control" placeholder="رقم المطالبة" value="${m.claimNum||''}" style="margin-top:5px;"><input id="sw-ln" class="form-control" placeholder="رقم الخطاب" value="${m.letterNum||''}" style="margin-top:5px;"><input id="sw-dt" class="form-control" type="date" value="${m.submissionDate||''}" style="margin-top:5px;"><input id="sw-nt" class="form-control" placeholder="ملاحظات" value="${m.returnNotes||''}" style="margin-top:5px;">`,
+        preConfirm: () => ({ financeStatus:document.getElementById('sw-st').value, claimNum:document.getElementById('sw-cn').value, letterNum:document.getElementById('sw-ln').value, submissionDate:document.getElementById('sw-dt').value, returnNotes:document.getElementById('sw-nt').value })
+    });
+    
+    if(v) {
+        update(ref(db, `app_db_v2/contracts/${cid}/months/${midx}`), v).then(() => {
+            window.appData.contracts[cid].months[midx] = v;
+            renderTable(); showToast("تم");
+        });
+    }
+};
+
+window.editNote = async function(cid) {
+    if(!canEdit(window.appData.contracts[cid].type)) return;
+    const {value:t} = await Swal.fire({input:'textarea', inputValue:window.appData.contracts[cid].notes});
+    if(t!==undefined) update(ref(db, `app_db_v2/contracts/${cid}`), {notes:t});
+}
+
+// --- الوظائف المساعدة الأخرى ---
 window.prepareEditContract = function(id) {
     const c = window.appData.contracts[id];
     fillContractorSelect();
@@ -300,12 +394,6 @@ window.prepareEditContract = function(id) {
     document.getElementById('form-value').value = c.value;
     document.getElementById('form-contract-num').value = c.contractNumber;
     openModal('contractModal');
-};
-
-window.deleteContract = async function(id) {
-    if((await Swal.fire({title:'حذف العقد؟', icon:'warning', showCancelButton:true})).isConfirmed) {
-        remove(ref(db, `app_db_v2/contracts/${id}`)).then(() => showToast("تم الحذف"));
-    }
 };
 
 window.saveContractor = function() {
@@ -322,54 +410,47 @@ window.prepareEditContractor = function(id, name) {
     openModal('contractorModal');
 };
 
-window.deleteContractor = function(id) {
-    const has = Object.values(window.appData.contracts).some(c => c.contractorId === id);
-    if(has) { Swal.fire('خطأ','المقاول مرتبط بعقود','error'); return; }
-    remove(ref(db, `app_db_v2/contractors/${id}`));
-};
-
-// --- 7. التفاعل مع الخلايا (Workflow) ---
-window.handleKpiCell = async function(cid, midx) {
-    const c = window.appData.contracts[cid];
-    if(!canEdit(c.type)) return;
-    if(!c.months || !c.months[midx]) { showToast("حدث الشهور أولاً"); return; }
-    
-    const m = c.months[midx];
-    const curStatus = m.financeStatus || 'late';
-
-    const {value:v} = await Swal.fire({
-        title: window.appData.monthNames[midx],
-        html: `
-            <select id="sw-st" class="form-control" onchange="document.getElementById('note-area').style.display = this.value==='returned'?'block':'none'">
-                <option value="late" ${curStatus==='late'?'selected':''}>متأخر</option>
-                <option value="sent" ${curStatus==='sent'?'selected':''}>تم الرفع</option>
-                <option value="returned" ${curStatus==='returned'?'selected':''}>إعادة</option>
-            </select>
-            <input id="sw-cn" class="form-control" placeholder="رقم المطالبة" value="${m.claimNum||''}" style="margin-top:5px;">
-            <input id="sw-ln" class="form-control" placeholder="رقم الخطاب" value="${m.letterNum||''}" style="margin-top:5px;">
-            <input id="sw-dt" class="form-control" type="date" value="${m.submissionDate||''}" style="margin-top:5px;">
-            
-            <div id="note-area" style="display:${curStatus==='returned'?'block':'none'}; margin-top:5px;">
-                <input id="sw-nt" class="form-control" placeholder="سبب الإعادة/ملاحظات" value="${m.returnNotes||''}">
-            </div>
-        `,
-        preConfirm: () => ({ financeStatus:document.getElementById('sw-st').value, claimNum:document.getElementById('sw-cn').value, letterNum:document.getElementById('sw-ln').value, submissionDate:document.getElementById('sw-dt').value, returnNotes:document.getElementById('sw-nt').value })
-    });
-    
-    if(v) {
-        update(ref(db, `app_db_v2/contracts/${cid}/months/${midx}`), v).then(() => {
-            window.appData.contracts[cid].months[midx] = v;
-            renderTable(); showToast("تم");
-        });
+window.deleteContract = async function(id) {
+    if((await Swal.fire({title:'حذف العقد؟', icon:'warning', showCancelButton:true})).isConfirmed) {
+        remove(ref(db, `app_db_v2/contracts/${id}`)).then(() => showToast("تم الحذف"));
     }
 };
 
-window.editNote = async function(cid) {
-    const {value:t} = await Swal.fire({input:'textarea', inputValue:window.appData.contracts[cid].notes});
-    if(t!==undefined) update(ref(db, `app_db_v2/contracts/${cid}`), {notes:t});
+window.deleteContractor = function(id) {
+    const has = Object.values(window.appData.contracts).some(c => c.contractorId === id);
+    if(has) Swal.fire('خطأ','المقاول مرتبط بعقود','error');
+    else remove(ref(db, `app_db_v2/contractors/${id}`));
+};
+
+window.openModal = function(id) {
+    document.getElementById(id).style.display = 'flex';
+    if(id === 'contractModal') fillContractorSelect();
+    if(id === 'contractModal' && !document.getElementById('form-contract-id').value) {
+        document.getElementById('form-hospital').value = '';
+        document.getElementById('form-contract-num').value = '';
+        document.getElementById('form-value').value = '';
+        document.getElementById('form-start-date').value = '';
+        document.getElementById('form-end-date').value = '';
+    }
+    if(id === 'contractorModal' && !document.getElementById('form-contractor-id').value) {
+        document.getElementById('form-new-contractor').value = '';
+    }
+};
+
+window.closeModal = function(id) {
+    document.getElementById(id).style.display = 'none';
+    if(id==='contractModal') document.getElementById('form-contract-id').value = '';
+    if(id==='contractorModal') document.getElementById('form-contractor-id').value = '';
+};
+
+function fillContractorSelect() {
+    const s = document.getElementById('form-contractor');
+    const curr = s.value;
+    s.innerHTML = '<option value="">اختر...</option>';
+    Object.entries(window.appData.contractors).forEach(([id,v])=> s.innerHTML+=`<option value="${id}">${v.name}</option>`);
+    s.value = curr;
 }
 
-// --- 8. أدوات النظام (شهر جديد، تصدير، تهيئة) ---
 window.refreshMonthsSystem = async function() {
     if(!window.userRole) return;
     if(!(await Swal.fire({title:'تحديث الشهور؟', text:'سيتم إنشاء الشهور من يناير للسنة الحالية.', icon:'warning', showCancelButton:true})).isConfirmed) return;
@@ -382,7 +463,7 @@ window.refreshMonthsSystem = async function() {
     
     const u = {'app_db_v2/monthNames': mNames};
     Object.entries(window.appData.contracts).forEach(([id, c]) => {
-        const adj = new Array(mNames.length).fill(null).map((_,i) => (c.months||[])[i] || {status:"late", financeStatus:"late", claimNum:"", letterNum:"", submissionDate:"", returnNotes:""});
+        const adj = new Array(mNames.length).fill(null).map((_,i) => (c.months||[])[i] || {status:"late", financeStatus:"late"});
         u[`app_db_v2/contracts/${id}/months`] = adj;
     });
     update(ref(db), u).then(() => showToast("تم التحديث"));
@@ -420,60 +501,6 @@ window.exportToExcel = function() {
     XLSX.writeFile(wb, "KPI_Report.xlsx");
 }
 
-// --- 9. تسجيل الدخول والتحقق ---
-window.adminLogin = async function() {
-    const { value: pass } = await Swal.fire({
-        title: 'تسجيل الدخول', input: 'password', confirmButtonText: 'دخول', confirmButtonColor: '#3498db'
-    });
-    if (!pass) return;
-
-    const cleanPass = String(pass).trim();
-    if (cleanPass == window.appPasswords.super) window.userRole = 'super';
-    else if (cleanPass == window.appPasswords.medical) window.userRole = 'medical';
-    else if (cleanPass == window.appPasswords.non_medical) window.userRole = 'non_medical';
-    else { Swal.fire('خطأ', 'كلمة المرور غير صحيحة', 'error'); return; }
-
-    document.getElementById('loginSection').classList.add('hidden');
-    document.getElementById('dashboardControls').classList.remove('hidden');
-    document.getElementById('loginBtn').classList.add('hidden');
-    document.getElementById('logoutBtn').classList.remove('hidden');
-    
-    const roleName = window.userRole==='super' ? '(مدير عام)' : (window.userRole==='medical' ? '(مشرف طبي)' : '(مشرف غير طبي)');
-    document.getElementById('roleDisplay').innerText = roleName;
-    
-    document.querySelectorAll('.super-admin-only').forEach(b => b.style.display = window.userRole === 'super' ? 'inline-block' : 'none');
-    document.querySelectorAll('.restricted-tab').forEach(t => t.style.display = window.userRole === 'super' ? 'block' : 'none');
-    
-    refreshAllViews();
-};
-
-function canEdit(type) {
-    if(window.userRole==='super') return true;
-    if(window.userRole==='medical' && type==='طبي') return true;
-    if(window.userRole==='non_medical' && type==='غير طبي') return true;
-    return false;
-}
-
-// Helpers
-window.openModal = function(id) {
-    document.getElementById(id).style.display = 'flex';
-    if(id === 'contractModal') fillContractorSelect();
-    if(id === 'contractorModal' && !document.getElementById('form-contractor-id').value) {
-        document.getElementById('form-new-contractor').value = '';
-    }
-};
-window.closeModal = function(id) {
-    document.getElementById(id).style.display = 'none';
-    if(id==='contractModal') document.getElementById('form-contract-id').value = '';
-    if(id==='contractorModal') document.getElementById('form-contractor-id').value = '';
-};
-function fillContractorSelect() {
-    const s = document.getElementById('form-contractor');
-    const curr = s.value;
-    s.innerHTML = '<option value="">اختر...</option>';
-    Object.entries(window.appData.contractors).forEach(([id,v])=> s.innerHTML+=`<option value="${id}">${v.name}</option>`);
-    s.value = curr;
-}
 window.showToast = function(msg) {
     const t = document.getElementById("toast"); t.innerText = msg; t.className = "show"; setTimeout(() => t.className = "", 2500);
 }
