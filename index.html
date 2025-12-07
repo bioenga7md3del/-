@@ -22,81 +22,85 @@
             --border-color: #dadada;
         }
 
-        body { font-family: 'Tajawal', sans-serif; background-color: var(--bg-color); margin: 0; padding: 20px; color: var(--text-color); }
+        body { font-family: 'Tajawal', sans-serif; background-color: var(--bg-color); margin: 0; padding: 10px; color: var(--text-color); }
 
         .container {
-            max-width: 100%; margin: 0 auto; background: white; padding: 25px;
-            box-shadow: 0 10px 30px rgba(0,0,0,0.08); border-radius: 15px; overflow-x: auto;
+            max-width: 100%; margin: 0 auto; background: white; padding: 15px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.05); border-radius: 10px; overflow-x: hidden; /* لمنع التمرير المزدوج */
         }
 
         header {
-            display: flex; align-items: center; justify-content: space-between; margin-bottom: 25px;
-            border-bottom: 4px solid var(--primary-color); padding-bottom: 15px;
+            display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px;
+            border-bottom: 4px solid var(--primary-color); padding-bottom: 15px; flex-wrap: wrap; gap: 10px;
         }
-        .header-text h1 { color: var(--primary-color); margin: 0; font-size: 26px; font-weight: 800; }
-        .header-text h2 { color: #666; margin: 5px 0 0 0; font-size: 15px; }
-        .logo-container img { max-height: 100px; width: auto; }
+        .header-text h1 { color: var(--primary-color); margin: 0; font-size: 22px; font-weight: 800; }
+        .header-text h2 { color: #666; margin: 5px 0 0 0; font-size: 14px; }
+        .logo-container img { max-height: 80px; width: auto; }
 
         /* --- لوحة الإحصائيات --- */
         .dashboard-container {
-            display: flex; gap: 20px; margin-bottom: 25px; 
+            display: flex; gap: 15px; margin-bottom: 20px; 
             flex-wrap: wrap; align-items: stretch;
         }
         
         .stats-grid {
-            flex: 2; display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; min-width: 300px;
+            flex: 2; display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; min-width: 100%;
         }
 
         .chart-container {
             flex: 1; background: #fff; border: 1px solid #eee; border-radius: 10px;
             padding: 10px; display: flex; align-items: center; justify-content: center;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.05); position: relative; min-width: 300px; height: 250px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05); position: relative; min-width: 250px; height: 250px; margin: 0 auto;
         }
 
         .stat-card {
             background: linear-gradient(135deg, #ffffff 0%, #f9f9f9 100%);
-            padding: 15px; border-radius: 10px; border-right: 4px solid var(--primary-color);
-            box-shadow: 0 4px 6px rgba(0,0,0,0.05); text-align: center;
+            padding: 10px; border-radius: 8px; border-right: 4px solid var(--primary-color);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05); text-align: center;
             display: flex; flex-direction: column; justify-content: center;
         }
-        .stat-number { font-size: 28px; font-weight: 800; color: var(--primary-color); }
-        .stat-label { font-size: 13px; color: #666; font-weight: bold; margin-top: 5px; }
+        .stat-number { font-size: 22px; font-weight: 800; color: var(--primary-color); }
+        .stat-label { font-size: 12px; color: #666; font-weight: bold; margin-top: 5px; }
         .stat-card.red-border { border-right-color: var(--danger); }
         .stat-card.red-border .stat-number { color: var(--danger); }
 
         /* --- لوحة التحكم --- */
         .admin-panel {
-            background: var(--secondary-color); color: white; padding: 15px 20px;
-            border-radius: 12px; margin-bottom: 20px; box-shadow: 0 4px 15px rgba(44, 62, 80, 0.3);
+            background: var(--secondary-color); color: white; padding: 15px;
+            border-radius: 10px; margin-bottom: 20px;
         }
-        .admin-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; border-bottom: 1px solid rgba(255,255,255,0.2); padding-bottom: 10px; }
+        .admin-header { 
+            display: flex; justify-content: space-between; align-items: center; 
+            margin-bottom: 15px; border-bottom: 1px solid rgba(255,255,255,0.2); padding-bottom: 10px; 
+            flex-wrap: wrap; gap: 10px;
+        }
         .admin-controls { display: none; gap: 10px; flex-wrap: wrap; }
         
         button {
-            padding: 9px 16px; border: none; border-radius: 6px; cursor: pointer;
-            font-family: 'Tajawal', sans-serif; font-weight: bold; font-size: 13px;
-            transition: all 0.3s ease; box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            padding: 8px 14px; border: none; border-radius: 6px; cursor: pointer;
+            font-family: 'Tajawal', sans-serif; font-weight: bold; font-size: 12px;
+            transition: all 0.3s ease; box-shadow: 0 2px 5px rgba(0,0,0,0.1); flex-grow: 1; text-align: center;
         }
-        button:hover { transform: translateY(-2px); box-shadow: 0 4px 8px rgba(0,0,0,0.2); opacity: 0.95; }
+        button:hover { transform: translateY(-2px); opacity: 0.95; }
 
         .btn-login { background: #3498db; color: white; }
         .btn-logout { background: #e74c3c; color: white; }
         .btn-reset { background: #f39c12; color: white; }
         .btn-new-month { background: #8e44ad; color: white; }
-        .btn-excel { background: #217346; color: white; display: flex; align-items: center; gap: 5px; }
+        .btn-excel { background: #217346; color: white; display: flex; align-items: center; justify-content: center; gap: 5px; }
         .btn-print { background: #fff; color: var(--secondary-color); }
         .btn-password { background: #e67e22; color: white; }
         .super-admin-only { display: none; } 
 
-        /* --- شريط الأدوات (تم الإصلاح) --- */
+        /* --- شريط الأدوات (متجاوب) --- */
         .toolbar-section {
             display: flex; align-items: center; background-color: #fff; padding: 15px;
             border-radius: 10px; margin-bottom: 20px; border: 1px solid #e1e4e8;
-            gap: 15px; flex-wrap: wrap;
+            gap: 10px; flex-wrap: wrap;
         }
         
         .search-box {
-            flex: 1; min-width: 250px; position: relative;
+            flex: 1; min-width: 200px; position: relative;
         }
         .search-input {
             width: 100%; padding: 10px 40px 10px 10px; border: 1px solid #ccc; border-radius: 6px;
@@ -107,40 +111,70 @@
         .filter-select {
             padding: 10px 15px; border-radius: 8px; border: 1px solid #ccc;
             font-family: 'Tajawal'; font-size: 14px; background-color: #f8f9fa;
-            cursor: pointer; min-width: 220px; flex-shrink: 0;
+            cursor: pointer; min-width: 150px; flex-shrink: 0; flex-grow: 1;
         }
 
         /* --- الجدول --- */
+        .table-wrapper {
+            overflow-x: auto;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+
         table {
-            width: 100%; border-collapse: separate; border-spacing: 0; min-width: 1400px;
-            border: 1px solid var(--border-color); border-radius: 8px;
+            width: 100%; border-collapse: separate; border-spacing: 0; min-width: 1200px;
         }
 
         thead th {
-            background-color: var(--primary-color); color: white; padding: 12px 10px; font-size: 14px;
+            background-color: var(--primary-color); color: white; padding: 12px 10px; font-size: 13px;
             border-bottom: 1px solid #004085; border-right: 1px solid rgba(255,255,255,0.1);
             position: sticky; top: 0; z-index: 40;
         }
 
         td {
-            padding: 10px 8px; text-align: center; font-size: 14px; vertical-align: middle;
+            padding: 10px 6px; text-align: center; font-size: 13px; vertical-align: middle;
             background-color: #fff; border-bottom: 1px solid var(--border-color); border-right: 1px solid var(--border-color);
             z-index: 1;
         }
 
-        .sticky-col-1 { position: sticky; right: 0; background-color: #f8f9fa !important; z-index: 30; font-weight: bold; border-left: 2px solid var(--border-color); min-width: 180px; }
-        .sticky-col-2 { position: sticky; right: 180px; background-color: #fff !important; z-index: 29; min-width: 90px; border-left: 1px solid var(--border-color); }
-        .sticky-col-3 { position: sticky; right: 270px; background-color: #f8f9fa !important; z-index: 30; min-width: 160px; box-shadow: -5px 0 10px -5px rgba(0,0,0,0.15); border-left: 1px solid #ccc; }
+        /* --- تثبيت الأعمدة (الإعدادات الافتراضية للديسك توب) --- */
+        .sticky-col-1 { position: sticky; right: 0; background-color: #f8f9fa !important; z-index: 30; font-weight: bold; border-left: 2px solid var(--border-color); min-width: 160px; }
+        .sticky-col-2 { position: sticky; right: 160px; background-color: #fff !important; z-index: 29; min-width: 80px; border-left: 1px solid var(--border-color); }
+        .sticky-col-3 { position: sticky; right: 240px; background-color: #f8f9fa !important; z-index: 30; min-width: 140px; box-shadow: -5px 0 10px -5px rgba(0,0,0,0.15); border-left: 1px solid #ccc; }
         
-        thead th:nth-child(1) { position: sticky; right: 0; z-index: 50 !important; min-width: 180px; }
-        thead th:nth-child(2) { position: sticky; right: 180px; z-index: 50 !important; min-width: 90px; }
-        thead th:nth-child(3) { position: sticky; right: 270px; z-index: 50 !important; min-width: 160px; box-shadow: -5px 0 10px -5px rgba(0,0,0,0.3); }
+        thead th:nth-child(1) { position: sticky; right: 0; z-index: 50 !important; min-width: 160px; }
+        thead th:nth-child(2) { position: sticky; right: 160px; z-index: 50 !important; min-width: 80px; }
+        thead th:nth-child(3) { position: sticky; right: 240px; z-index: 50 !important; min-width: 140px; box-shadow: -5px 0 10px -5px rgba(0,0,0,0.3); }
 
-        .status-ok { color: var(--success); font-size: 20px; }
-        .status-late { color: #e74c3c; font-size: 20px; }
-        .status-detailed { color: var(--primary-color); font-size: 20px; cursor: help; }
+        /* --- تحسينات الجوال (الحل السحري للتداخل) --- */
+        @media (max-width: 768px) {
+            /* إلغاء تثبيت الأعمدة الثانوية */
+            .sticky-col-2, .sticky-col-3,
+            thead th:nth-child(2), thead th:nth-child(3) {
+                position: static !important;
+                box-shadow: none !important;
+                border-left: 1px solid var(--border-color) !important;
+            }
 
-        .badge { padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: bold; color: white; }
+            /* الإبقاء على العمود الأول فقط مثبت */
+            .sticky-col-1, thead th:nth-child(1) {
+                min-width: 140px;
+                box-shadow: -2px 0 5px rgba(0,0,0,0.1); /* إضافة ظل بسيط */
+            }
+
+            /* ترتيب العناصر عمودياً */
+            .toolbar-section { flex-direction: column; align-items: stretch; }
+            .header-text h1 { font-size: 20px; }
+            .logo-container img { max-height: 70px; }
+            .admin-header { flex-direction: column; align-items: stretch; }
+            .admin-header > div { justify-content: space-between; }
+        }
+
+        .status-ok { color: var(--success); font-size: 18px; }
+        .status-late { color: #e74c3c; font-size: 18px; }
+        .status-detailed { color: var(--primary-color); font-size: 18px; cursor: help; }
+
+        .badge { padding: 3px 8px; border-radius: 12px; font-size: 11px; font-weight: bold; color: white; }
         .badge-red { background-color: var(--danger); }
         .badge-green { background-color: var(--success); }
 
@@ -152,13 +186,12 @@
         body.editing-mode .locked-cell { opacity: 0.6; cursor: not-allowed; background-color: #f0f0f0 !important; }
 
         #toast {
-            visibility: hidden; min-width: 250px; background-color: #333; color: #fff; text-align: center; border-radius: 50px;
-            padding: 15px; position: fixed; z-index: 2000; left: 50%; bottom: 30px; transform: translateX(-50%);
-            box-shadow: 0 5px 15px rgba(0,0,0,0.3); opacity: 0; transition: all 0.5s;
+            visibility: hidden; min-width: 200px; background-color: #333; color: #fff; text-align: center; border-radius: 50px;
+            padding: 10px; position: fixed; z-index: 2000; left: 50%; bottom: 20px; transform: translateX(-50%);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3); opacity: 0; transition: all 0.5s; font-size: 14px;
         }
-        #toast.show { visibility: visible; opacity: 1; bottom: 50px; }
+        #toast.show { visibility: visible; opacity: 1; bottom: 40px; }
 
-        /* --- تنسيق الطباعة --- */
         @media print {
             @page { size: landscape; margin: 5mm; }
             body { background: white; transform: scale(0.65); transform-origin: top right; width: 150%; -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
@@ -166,10 +199,8 @@
             .container { box-shadow: none; padding: 0; width: 100% !important; max-width: none !important; }
             .admin-panel, .btn-print, #loginSection, .toolbar-section, #toast { display: none !important; }
             
-            /* التحكم في ظهور الداش بورد حسب الكلاس */
             body.hide-dash-print .dashboard-container { display: none !important; }
             
-            /* تحسين شكل الداش بورد للطباعة */
             .dashboard-container { margin-bottom: 20px; border-bottom: 2px solid #ccc; padding-bottom: 10px; }
             .stat-card { box-shadow: none; border: 1px solid #ccc; }
             .chart-container { border: none; box-shadow: none; max-height: 200px; }
@@ -188,16 +219,16 @@
     
     <div class="admin-panel">
         <div class="admin-header">
-            <div style="display: flex; align-items: center; gap: 10px;">
-                <span style="font-weight: 800; font-size: 18px;">🔒 بوابة الإدارة</span>
-                <span id="roleDisplay" style="color: #f1c40f; font-weight: bold; background: rgba(255,255,255,0.1); padding: 2px 8px; border-radius: 4px;"></span>
+            <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                <span style="font-weight: 800; font-size: 16px;">🔒 بوابة الإدارة</span>
+                <span id="roleDisplay" style="color: #f1c40f; font-weight: bold; background: rgba(255,255,255,0.1); padding: 2px 8px; border-radius: 4px; font-size: 13px;"></span>
             </div>
             
-            <div style="display: flex; gap: 15px; align-items: center;">
-                <label style="color: white; font-size: 13px; cursor: pointer; display: flex; align-items: center; gap: 5px; background: rgba(255,255,255,0.1); padding: 5px 10px; border-radius: 5px;">
+            <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
+                <label style="color: white; font-size: 12px; cursor: pointer; display: flex; align-items: center; gap: 5px; background: rgba(255,255,255,0.1); padding: 5px 10px; border-radius: 5px;">
                     <input type="checkbox" id="printDashCheck" checked onchange="togglePrintDash()"> طباعة الإحصائيات
                 </label>
-                <button class="btn-excel" onclick="exportToExcel()">📊 تصدير Excel</button>
+                <button class="btn-excel" onclick="exportToExcel()">📊 Excel</button>
                 <button class="btn-print" onclick="window.print()">🖨 طباعة</button>
             </div>
         </div>
@@ -209,13 +240,10 @@
 
         <div id="adminControls" class="admin-controls">
             <button class="btn-new-month super-admin-only" onclick="addNewMonthAutomatic()">📅 إقفال الشهر</button>
-            <button class="btn-password super-admin-only" onclick="changePasswords()">🔑 تغيير كلمات المرور</button>
+            <button class="btn-password super-admin-only" onclick="changePasswords()">🔑 كلمات المرور</button>
             <button class="btn-reset super-admin-only" onclick="uploadInitialData()">⚠ تهيئة النظام</button>
             
-            <button class="btn-logout" onclick="location.reload()">تسجيل خروج</button>
-            <div style="width: 100%; font-size:12px; color:#bdc3c7; margin-top:8px; border-top: 1px solid rgba(255,255,255,0.1); padding-top: 8px;">
-                النظام يحفظ التغييرات تلقائياً.
-            </div>
+            <button class="btn-logout" onclick="location.reload()">خروج</button>
         </div>
     </div>
 
@@ -237,15 +265,15 @@
             </div>
             <div class="stat-card">
                 <span class="stat-number" id="totalContracts">0</span>
-                <span class="stat-label">العقود المعروضة</span>
+                <span class="stat-label">العقود</span>
             </div>
             <div class="stat-card red-border">
                 <span class="stat-number" id="totalLate">0</span>
-                <span class="stat-label">المتأخرات الحالية</span>
+                <span class="stat-label">المتأخرات</span>
             </div>
             <div class="stat-card" style="border-right-color: #28a745;">
                 <span class="stat-number" id="complianceRate">0%</span>
-                <span class="stat-label">نسبة الالتزام</span>
+                <span class="stat-label">الالتزام</span>
             </div>
         </div>
         <div class="chart-container">
@@ -265,7 +293,7 @@
             <option value="غير طبي">عقود غير طبية</option>
         </select>
         
-        <div class="legend" style="display: flex; gap: 15px; font-size: 13px;">
+        <div class="legend" style="display: flex; gap: 10px; font-size: 12px; flex-wrap: wrap; justify-content: center;">
             <div style="display: flex; align-items: center; gap: 5px;"><span class="status-detailed">✅</span> مكتمل</div>
             <div style="display: flex; align-items: center; gap: 5px;"><span class="status-ok">✔</span> مرفوع</div>
             <div style="display: flex; align-items: center; gap: 5px;"><span class="status-late">✘</span> متأخر</div>
@@ -275,10 +303,12 @@
     <div id="loader">جاري الاتصال...</div>
     <div id="toast">تم الحفظ</div>
 
-    <table id="mainTable" style="display:none;">
-        <thead><tr id="headerRow"></tr></thead>
-        <tbody id="tableBody"></tbody>
-    </table>
+    <div class="table-wrapper">
+        <table id="mainTable" style="display:none;">
+            <thead><tr id="headerRow"></tr></thead>
+            <tbody id="tableBody"></tbody>
+        </table>
+    </div>
 
     <footer>تم التطوير بواسطة: قسم الصيانة الطبية بتجمع تبوك الصحي</footer>
 </div>
@@ -320,6 +350,7 @@
             });
             window.currentData = data;
             renderTable();
+            // تم إزالة updateDashboard من هنا
             loader.style.display = 'none';
             table.style.display = 'table';
         } else {
@@ -379,7 +410,6 @@
         });
     }
 
-    // --- وظيفة تبديل طباعة الداش بورد ---
     window.togglePrintDash = function() {
         const checkbox = document.getElementById('printDashCheck');
         if (checkbox.checked) {
@@ -420,9 +450,9 @@
         
         const headerRow = document.getElementById('headerRow');
         headerRow.innerHTML = `
-            <th style="min-width: 180px;">الموقع / المستشفى</th>
-            <th style="min-width: 90px;">نوع العقد</th>
-            <th style="min-width: 160px;">المقاول</th>
+            <th style="min-width: 160px;">الموقع / المستشفى</th>
+            <th style="min-width: 80px;">نوع العقد</th>
+            <th style="min-width: 140px;">المقاول</th>
             <th style="width: 50px;">المتأخرة</th>
         `;
 
