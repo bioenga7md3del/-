@@ -19,7 +19,7 @@
             --text-color: #333;
             --success: #28a745;
             --danger: #dc3545;
-            --border-color: #e0e0e0;
+            --border-color: #dadada;
         }
 
         body { font-family: 'Tajawal', sans-serif; background-color: var(--bg-color); margin: 0; padding: 20px; color: var(--text-color); }
@@ -37,29 +37,29 @@
         .header-text h2 { color: #666; margin: 5px 0 0 0; font-size: 15px; }
         .logo-container img { max-height: 100px; width: auto; }
 
+        /* --- إصلاح تداخل لوحة الإحصائيات --- */
         .dashboard-container {
-            display: flex; gap: 20px; margin-bottom: 25px; align-items: stretch;
+            display: flex; gap: 20px; margin-bottom: 25px; 
+            flex-wrap: wrap; /* هذا يمنع تداخل الكروت مع الرسم البياني */
+            align-items: stretch;
         }
         
         .stats-grid {
-            flex: 2; display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px;
+            flex: 2; display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; min-width: 300px;
         }
 
         .chart-container {
             flex: 1; background: #fff; border: 1px solid #eee; border-radius: 10px;
             padding: 10px; display: flex; align-items: center; justify-content: center;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.05); position: relative; max-width: 300px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05); position: relative; min-width: 300px; height: 250px;
         }
 
         .stat-card {
             background: linear-gradient(135deg, #ffffff 0%, #f9f9f9 100%);
             padding: 15px; border-radius: 10px; border-right: 4px solid var(--primary-color);
             box-shadow: 0 4px 6px rgba(0,0,0,0.05); text-align: center;
-            display: flex; flex-direction: column; justify-content: center; transition: all 0.3s ease;
+            display: flex; flex-direction: column; justify-content: center;
         }
-        /* إضافة حركة بسيطة عند التحديث */
-        .stat-card:hover { transform: translateY(-2px); }
-        
         .stat-number { font-size: 28px; font-weight: 800; color: var(--primary-color); }
         .stat-label { font-size: 13px; color: #666; font-weight: bold; margin-top: 5px; }
         .stat-card.red-border { border-right-color: var(--danger); }
@@ -103,29 +103,65 @@
 
         .filter-select { padding: 8px; border-radius: 6px; border: 1px solid #ccc; font-family: 'Tajawal'; font-size: 14px; }
 
+        /* --- الجدول ونظام الطبقات (Z-Index System) لحل التداخل --- */
         table {
-            width: 100%; border-collapse: separate; border-spacing: 0; min-width: 1400px;
-            border: 1px solid var(--border-color); border-radius: 8px;
+            width: 100%; 
+            border-collapse: separate; /* ضروري جداً لمنع التداخل */
+            border-spacing: 0; 
+            min-width: 1400px;
+            border: 1px solid var(--border-color); 
+            border-radius: 8px;
         }
 
+        /* 1. رأس الجدول (Header Cells) */
         thead th {
-            background-color: var(--primary-color); color: white; padding: 12px 10px; font-size: 14px;
-            border-bottom: 1px solid #004085; border-right: 1px solid rgba(255,255,255,0.1);
-            position: sticky; top: 0; z-index: 10;
+            background-color: var(--primary-color); 
+            color: white; 
+            padding: 12px 10px; 
+            font-size: 14px;
+            border-bottom: 1px solid #004085; 
+            border-right: 1px solid rgba(255,255,255,0.1);
+            position: sticky; 
+            top: 0; 
+            z-index: 40; /* أولوية عالية */
         }
 
+        /* 2. الخلايا العادية */
         td {
             padding: 10px 8px; text-align: center; font-size: 14px; vertical-align: middle;
             background-color: #fff; border-bottom: 1px solid var(--border-color); border-right: 1px solid var(--border-color);
+            z-index: 1;
         }
 
-        .sticky-col-1 { position: sticky; right: 0; background-color: #f8f9fa !important; z-index: 5; font-weight: bold; border-left: 2px solid var(--border-color); min-width: 180px; }
-        .sticky-col-2 { position: sticky; right: 180px; background-color: #fff !important; z-index: 4; min-width: 90px; border-left: 1px solid var(--border-color); }
-        .sticky-col-3 { position: sticky; right: 270px; background-color: #f8f9fa !important; z-index: 5; min-width: 160px; box-shadow: -5px 0 10px -5px rgba(0,0,0,0.15); border-left: 1px solid #ccc; }
+        /* 3. الأعمدة المثبتة (الخلايا الجانبية) */
+        .sticky-col-1 { 
+            position: sticky; right: 0; 
+            background-color: #f8f9fa !important; 
+            z-index: 30; /* فوق الخلايا العادية لكن تحت الرأس */
+            font-weight: bold; border-left: 2px solid var(--border-color); 
+            min-width: 180px; 
+        }
         
-        thead th:nth-child(1) { right: 0; z-index: 11; min-width: 180px; }
-        thead th:nth-child(2) { right: 180px; z-index: 11; min-width: 90px; }
-        thead th:nth-child(3) { right: 270px; z-index: 11; min-width: 160px; box-shadow: -5px 0 10px -5px rgba(0,0,0,0.3); }
+        .sticky-col-2 { 
+            position: sticky; right: 180px; 
+            background-color: #fff !important; 
+            z-index: 29; 
+            min-width: 90px; border-left: 1px solid var(--border-color); 
+        }
+        
+        .sticky-col-3 { 
+            position: sticky; right: 270px; 
+            background-color: #f8f9fa !important; 
+            z-index: 30; 
+            min-width: 160px; 
+            box-shadow: -5px 0 10px -5px rgba(0,0,0,0.15); /* الظل للفصل */
+            border-left: 1px solid #ccc; 
+        }
+        
+        /* 4. زوايا الرأس المثبتة (Intersection Header Cells) - أعلى طبقة */
+        thead th:nth-child(1) { position: sticky; right: 0; z-index: 50 !important; min-width: 180px; }
+        thead th:nth-child(2) { position: sticky; right: 180px; z-index: 50 !important; min-width: 90px; }
+        thead th:nth-child(3) { position: sticky; right: 270px; z-index: 50 !important; min-width: 160px; box-shadow: -5px 0 10px -5px rgba(0,0,0,0.3); }
 
         .status-ok { color: var(--success); font-size: 20px; }
         .status-late { color: #e74c3c; font-size: 20px; }
@@ -155,7 +191,8 @@
             .container { box-shadow: none; padding: 0; width: 100% !important; max-width: none !important; }
             .admin-panel, .btn-print, #loginSection, .toolbar-section, #toast, .dashboard-container { display: none !important; }
             th, td { border: 1px solid #000 !important; font-size: 10px; padding: 2px !important; color: black !important; }
-            .sticky-col-1, .sticky-col-2, .sticky-col-3 { position: static !important; box-shadow: none !important; border: 1px solid #000 !important; }
+            /* إزالة التثبيت عند الطباعة لمنع التداخل في الورق */
+            .sticky-col-1, .sticky-col-2, .sticky-col-3, thead th { position: static !important; box-shadow: none !important; border: 1px solid #000 !important; }
             .type-medical { background-color: #e3f2fd !important; }
             .type-non-medical { background-color: #fdebd0 !important; }
             td[title]:after { content: attr(title); display: block; font-size: 8px; color: #333; margin-top: 2px; white-space: pre-wrap; }
@@ -293,7 +330,6 @@
             });
             window.currentData = data;
             renderTable();
-            // تم إزالة updateDashboard من هنا لأن renderTable تستدعيها بالفعل
             loader.style.display = 'none';
             table.style.display = 'table';
         } else {
@@ -319,7 +355,6 @@
     function updateDashboard() {
         if(!window.currentData.rows) return;
         
-        // جلب الفلتر الحالي لتطبيقه على الإحصائيات
         const filter = document.getElementById('typeFilter').value;
         
         // تصفية الصفوف أولاً
@@ -327,7 +362,6 @@
             return filter === 'all' || row.type === filter;
         });
         
-        // الإحصائيات بناءً على البيانات المصفاة
         const uniqueHospitals = new Set(rows.map(r => r.name)).size;
         const totalLate = rows.reduce((sum, row) => sum + (row.late || 0), 0);
         
@@ -344,7 +378,6 @@
         document.getElementById('totalLate').innerText = totalLate;
         document.getElementById('complianceRate').innerText = compliance + "%";
 
-        // تحديث الرسم البياني
         const ctx = document.getElementById('kpiChart').getContext('2d');
         const notSubmitted = totalCells - totalSubmitted;
         
@@ -376,7 +409,6 @@
         const headers = ["المستشفى", "نوع العقد", "المقاول", "عدد المتأخرات", ...window.currentData.monthNames, "ملاحظات"];
         const excelData = [headers];
 
-        // نستخدم نفس الفلتر الحالي عند التصدير أيضاً
         const filter = document.getElementById('typeFilter').value;
         const rowsToExport = window.currentData.rows.filter(row => filter === 'all' || row.type === filter);
 
@@ -458,7 +490,6 @@
                 if (filterType === 'all' && searchTerm === '' && isSameHospital) { i += 2; } else { i++; }
             }
         }
-        // تحديث الداشبورد بعد رسم الجدول
         updateDashboard();
     }
 
