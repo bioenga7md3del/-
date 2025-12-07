@@ -14,17 +14,22 @@ onValue(dbRef, (snapshot) => {
     const table = document.getElementById('mainTable');
     
     if (data) {
+        // حماية البيانات لتجنب الأخطاء
         window.appData.contractors = data.contractors || {};
         window.appData.contracts = data.contracts || {};
-        window.appData.monthNames = data.monthNames || [];
+        window.appData.monthNames = data.monthNames || []; // مصفوفة الشهور
         
         try {
-            renderTable();
-            updateStats();
+            renderTable(); // محاولة رسم الجدول
+            updateStats(); // تحديث الإحصائيات
+            
+            // إظهار الجدول وإخفاء التحميل
             if (loader) loader.style.display = 'none';
             if (table) table.style.display = 'table';
-        } catch (e) {
-            console.error("Render Error:", e);
+            
+        } catch (error) {
+            console.error("خطأ في الرسم:", error);
+            if (loader) loader.innerHTML = "حدث خطأ في عرض البيانات. يرجى مراجعة وحدة التحكم (Console).";
         }
     } else {
         if (loader) loader.innerHTML = "النظام جاهز. يرجى تسجيل الدخول وتهيئة النظام.";
@@ -33,11 +38,13 @@ onValue(dbRef, (snapshot) => {
 
 onValue(ref(db, 'app_settings/passwords'), (s) => { if(s.exists()) window.appPasswords = s.val(); });
 
+// --- Helper Functions ---
 window.showToast = function(msg) {
     const t = document.getElementById("toast"); 
     if(t) { t.innerText = msg; t.className = "show"; setTimeout(() => t.className = "", 2500); }
 }
 
+// --- Modals ---
 window.openModal = function(id) {
     const m = document.getElementById(id); if(m) m.style.display = 'flex';
     if(id === 'contractorModal') renderContractorsList();
@@ -47,9 +54,11 @@ window.closeModal = function(id) {
     const m = document.getElementById(id); if(m) m.style.display = 'none';
 }
 
+// --- Month Logic ---
 window.refreshMonthsSystem = async function() {
     if (!window.userRole || window.userRole !== 'super') return;
-    if(!(await Swal.fire({title:'تحديث الجدول الزمني؟', text:'سيتم ضبط الأعمدة من يناير للسنة الحالية.', icon:'warning', showCancelButton:true})).isConfirmed) return;
+    
+    if(!(await Swal.fire({title:'تحديث الجدول الزمني؟', text:'سيتم إنشاء أعمدة الشهور من يناير للسنة الحالية.', icon:'warning', showCancelButton:true})).isConfirmed) return;
 
     const now = new Date();
     const currentYear = now.getFullYear();
@@ -57,6 +66,7 @@ window.refreshMonthsSystem = async function() {
     const arabicMonths = ["يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو", "يوليو", "أغسطس", "سبتمبر", "أكتوبر", "نوفمبر", "ديسمبر"];
     let newMonthNames = [];
 
+    // إنشاء الشهور حتى الشهر الحالي
     for (let i = 0; i < currentMonth; i++) {
         newMonthNames.push(`${arabicMonths[i]} ${currentYear}`);
     }
@@ -65,6 +75,7 @@ window.refreshMonthsSystem = async function() {
     const updates = {};
     updates['app_db_v2/monthNames'] = newMonthNames;
 
+    // تحديث العقود الموجودة لتتوافق مع الشهور الجديدة
     Object.entries(window.appData.contracts).forEach(([id, contract]) => {
         let currentMonths = contract.months || [];
         const adjustedMonths = new Array(newMonthNames.length).fill(null).map((_, idx) => {
@@ -73,9 +84,10 @@ window.refreshMonthsSystem = async function() {
         updates[`app_db_v2/contracts/${id}/months`] = adjustedMonths;
     });
 
-    update(ref(db), updates).then(() => showToast("تم التحديث"));
+    update(ref(db), updates).then(() => showToast("تم تحديث الشهور"));
 };
 
+// --- Contractors ---
 window.saveNewContractor = function() {
     const name = document.getElementById('form-new-contractor').value;
     if(!name) return;
@@ -103,6 +115,7 @@ window.deleteContractor = function(id) {
     remove(ref(db, `app_db_v2/contractors/${id}`)).then(() => renderContractorsList());
 }
 
+// --- Contracts ---
 function fillContractorSelect() {
     const sel = document.getElementById('form-contractor');
     if(!sel) return;
@@ -136,6 +149,7 @@ window.saveNewContract = function() {
 
     push(ref(db, 'app_db_v2/contracts'), newContract).then(() => {
         showToast("تم الحفظ"); closeModal('contractModal');
+        // Clear inputs
         document.getElementById('form-hospital').value = '';
         document.getElementById('form-contract-num').value = '';
         document.getElementById('form-value').value = '';
@@ -144,73 +158,71 @@ window.saveNewContract = function() {
     });
 };
 
-// --- Table Rendering (Updated with Custom Tooltip) ---
+// --- Table Rendering (الحل لمشكلة الاختفاء) ---
 window.renderTable = function() {
     const { contracts, contractors, monthNames } = window.appData;
     
+    // تأمين عناصر البحث
     const searchHospEl = document.getElementById('searchBox');
-    if (!searchHospEl) return;
-
-    const searchBoxVal = searchHospEl.value.toLowerCase();
-    const filter = document.getElementById('typeFilter').value;
+    const searchHosp = searchHospEl ? searchHospEl.value.toLowerCase() : "";
+    const filter = document.getElementById('typeFilter') ? document.getElementById('typeFilter').value : "all";
 
     const hRow = document.getElementById('headerRow');
     if(!hRow) return;
 
-    hRow.innerHTML = `
+    // بناء الهيدر
+    let headerHTML = `
         <th class="sticky-col-1">الموقع / المستشفى</th>
         <th class="sticky-col-2">نوع العقد</th>
         <th class="sticky-col-3">المقاول</th>
         <th style="min-width:50px">المتأخرات</th>
     `;
     
+    // إذا لم تكن هناك شهور، نعرض رسالة تنبيه في الهيدر
     if (Array.isArray(monthNames) && monthNames.length > 0) {
-        monthNames.forEach(m => hRow.innerHTML += `<th style="min-width:110px">${m}</th>`);
+        monthNames.forEach(m => headerHTML += `<th style="min-width:110px">${m}</th>`);
     } else {
-        hRow.innerHTML += `<th style="background:#e74c3c; color:white;">⚠️ يرجى الضغط على "تحديث الشهور"</th>`;
+        headerHTML += `<th style="background:#e74c3c; color:white;">⚠️ يرجى الضغط على "تحديث الشهور"</th>`;
     }
     
-    hRow.innerHTML += `<th style="min-width:200px">ملاحظات</th>`;
+    headerHTML += `<th style="min-width:200px">ملاحظات</th>`;
+    hRow.innerHTML = headerHTML;
 
     const tbody = document.getElementById('tableBody');
     if(!tbody) return;
     tbody.innerHTML = '';
 
+    // رسم الصفوف
     Object.entries(contracts).map(([id, val])=>({...val, id})).forEach(row => {
         const cName = contractors[row.contractorId]?.name || "غير معروف";
-        const txtMatch = row.hospital.toLowerCase().includes(searchBoxVal) || cName.toLowerCase().includes(searchBoxVal);
+        
+        const txtMatch = row.hospital.toLowerCase().includes(searchHosp) || cName.toLowerCase().includes(searchHosp);
         const typeMatch = filter === 'all' || row.type === filter;
 
         if(txtMatch && typeMatch) {
             const tr = document.createElement('tr');
+            tr.className = row.type === 'طبي' ? 'row-medical' : 'row-non-medical';
             
             const lateCount = (row.months||[]).filter(m => m.financeStatus === 'late').length;
             const badge = lateCount > 0 ? 'badge-red' : 'badge-green';
             
-            // Format Data for Tooltip
-            let valFormatted = row.value ? Number(row.value).toLocaleString() : '-';
-            const tooltipContent = `
-📅 البداية: ${row.startDate || '-'}
-📅 النهاية: ${row.endDate || '-'}
-💰 القيمة: ${valFormatted} ريال
-🔢 رقم العقد: ${row.contractNumber || '-'}
-            `.trim();
+            // Tooltip info
+            let valFormatted = '-';
+            if (row.value) try { valFormatted = Number(row.value).toLocaleString(); } catch(e) {}
+            const details = `📅 البداية: ${row.startDate||'-'}\n📅 النهاية: ${row.endDate||'-'}\n💰 القيمة: ${valFormatted}`;
 
             tr.innerHTML = `
                 <td class="sticky-col-1">${row.hospital}</td>
-                
-                <td class="sticky-col-2">
-                    <div class="tooltip-container">
-                        <span class="${row.type==='طبي' ? 'type-medical' : 'type-non-medical'}">${row.type}</span>
-                        <span class="tooltip-text">${tooltipContent}</span>
-                    </div>
+                <td class="sticky-col-2" title="${details}" style="cursor:help;">
+                    <span class="${row.type==='طبي' ? 'type-medical' : 'type-non-medical'}">${row.type}</span>
                 </td>
-                
                 <td class="sticky-col-3">${cName}</td>
                 <td><span class="badge ${badge}">${lateCount}</span></td>
             `;
 
+            // رسم خلايا الشهور
             if (Array.isArray(monthNames) && monthNames.length > 0) {
+                // نضمن وجود بيانات حتى لو المصفوفة أقصر
                 monthNames.forEach((mName, idx) => {
                     const m = (row.months && row.months[idx]) ? row.months[idx] : {financeStatus: 'late'};
                     
@@ -232,11 +244,16 @@ window.renderTable = function() {
     updateStats();
 };
 
+// --- FIX: Cell Handling (التحديث وإغلاق النافذة) ---
 window.handleCell = async function(cid, midx) {
     const c = window.appData.contracts[cid];
     if(!canEdit(c.type)) return;
     
-    if (!c.months || !c.months[midx]) { showToast("يرجى تحديث الشهور أولاً"); return; }
+    // حماية ضد البيانات الناقصة
+    if (!c.months || !c.months[midx]) {
+        showToast("يرجى تحديث الشهور أولاً");
+        return;
+    }
 
     const mData = c.months[midx];
     const mName = window.appData.monthNames[midx];
@@ -250,7 +267,7 @@ window.handleCell = async function(cid, midx) {
                 <label>رقم الخطاب</label><input id="sw-le" class="swal2-input" value="${mData.letterNum||''}">
                 <label>تاريخ الرفع</label><input id="sw-da" class="swal2-input" type="date" value="${mData.submissionDate||''}">
                 <label>الحالة</label>
-                <select id="sw-status" class="swal2-select">
+                <select id="sw-st" class="swal2-select">
                     <option value="late" ${curStatus==='late'?'selected':''}>لم يرفع (متأخر)</option>
                     <option value="sent" ${curStatus==='sent'?'selected':''}>تم الرفع للمالية</option>
                     <option value="returned" ${curStatus==='returned'?'selected':''}>إعادة للموقع</option>
@@ -267,15 +284,16 @@ window.handleCell = async function(cid, midx) {
             claimNum: document.getElementById('sw-cl').value,
             letterNum: document.getElementById('sw-le').value,
             submissionDate: document.getElementById('sw-da').value,
-            financeStatus: document.getElementById('sw-status').value,
+            financeStatus: document.getElementById('sw-st').value,
             returnNotes: document.getElementById('sw-notes').value
         })
     });
 
     if(v) {
         update(ref(db, `app_db_v2/contracts/${cid}/months/${midx}`), v).then(() => {
-            window.appData.contracts[cid].months[midx] = v; // تحديث محلي
-            renderTable(); // إعادة رسم فورية
+            // تحديث محلي فوري
+            window.appData.contracts[cid].months[midx] = v;
+            renderTable();
             showToast("تم التحديث");
         });
     }
@@ -286,6 +304,7 @@ window.editNote = async function(cid) {
     if(t!==undefined) update(ref(db, `app_db_v2/contracts/${cid}`), {notes:t}).then(() => showToast("تم الحفظ"));
 };
 
+// --- System ---
 window.systemReset = async function() {
     if(!window.userRole || window.userRole !== 'super') return;
     if((await Swal.fire({title:'تهيئة؟', text:'سيتم مسح البيانات!', icon:'warning', showCancelButton:true})).isConfirmed) {
