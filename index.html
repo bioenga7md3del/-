@@ -86,15 +86,77 @@
         .btn-password { background: #e67e22; color: white; } /* زر تغيير الباسورد */
         .super-admin-only { display: none; } 
 
+        /* --- شريط الأدوات والبحث (تم التعديل لمنع التداخل) --- */
         .toolbar-section {
-            display: flex; align-items: center; background-color: #fff; padding: 10px 15px;
-            border-radius: 10px; margin-bottom: 15px; border: 1px solid #e1e4e8; gap: 15px; flex-wrap: wrap;
+            display: flex;
+            align-items: center;
+            background-color: #fff;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            border: 1px solid #e1e4e8;
+            gap: 15px;
+            flex-wrap: wrap; /* يسمح بالنزول لسطر جديد عند الضرورة */
         }
         
-        .search-box { flex-grow: 1; position: relative; }
-        .search-input { width: 100%; padding: 8px 35px 8px 10px; border: 1px solid #ccc; border-radius: 6px; font-family: 'Tajawal'; font-size: 14px; }
-        .search-icon { position: absolute; right: 10px; top: 50%; transform: translateY(-50%); color: #999; }
-        .filter-select { padding: 8px; border-radius: 6px; border: 1px solid #ccc; font-family: 'Tajawal'; font-size: 14px; }
+        .search-box {
+            flex: 1; /* يأخذ المساحة المتبقية بذكاء */
+            min-width: 250px; /* الحد الأدنى للعرض لمنع الانكماش */
+            position: relative;
+        }
+
+        .search-input {
+            width: 100%;
+            padding: 10px 40px 10px 15px; /* مساحة للأيقونة */
+            border: 1px solid #ced4da;
+            border-radius: 8px;
+            font-family: 'Tajawal';
+            font-size: 14px;
+            box-sizing: border-box; /* يضمن حساب الحواف داخل العرض */
+            transition: border-color 0.3s;
+        }
+        
+        .search-input:focus {
+            border-color: var(--primary-color);
+            outline: none;
+        }
+
+        .search-icon {
+            position: absolute;
+            right: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #999;
+            pointer-events: none; /* يسمح بالنقر خلال الأيقونة */
+        }
+
+        .filter-select {
+            padding: 10px 15px;
+            border-radius: 8px;
+            border: 1px solid #ced4da;
+            font-family: 'Tajawal';
+            font-size: 14px;
+            background-color: #f8f9fa;
+            cursor: pointer;
+            min-width: 220px; /* عرض ثابت للقائمة */
+            flex-shrink: 0; /* يمنع القائمة من الانكماش */
+        }
+
+        /* تحسين للموبايل */
+        @media (max-width: 768px) {
+            .toolbar-section {
+                flex-direction: column; /* ترتيب العناصر عمودياً */
+                align-items: stretch; /* تمديد العناصر لملء العرض */
+            }
+            .search-box, .filter-select {
+                width: 100%;
+                min-width: 100%;
+            }
+            .legend {
+                justify-content: center;
+                margin-top: 10px;
+            }
+        }
 
         /* --- الجدول --- */
         table {
