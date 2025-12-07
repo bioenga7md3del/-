@@ -16,13 +16,18 @@ DB.listenToData((data) => {
         window.appData.contractors = data.contractors || {};
         window.appData.contracts = data.contracts || {};
         window.appData.monthNames = data.monthNames || [];
+    } else {
+        window.appData = { contractors: {}, contracts: {}, monthNames: [] };
     }
-    // تحديث الواجهة دائماً (حتى لو فارغة)
+    
     try {
+        // تحديث الواجهة دائماً (حتى لو لم يسجل دخول)
         refreshView();
         document.getElementById('mainTable').style.display = 'table';
     } catch (e) { console.error("Error rendering:", e); }
+
 }, (err) => {
+    document.getElementById('loader').innerText = "خطأ اتصال";
     console.error(err);
 });
 
@@ -30,17 +35,18 @@ DB.listenToPasswords((pass) => window.appPasswords = pass);
 
 // --- 2. Refresh Helper ---
 function refreshView() {
+    // نمرر البيانات والدوال المطلوبة للـ UI
     const rows = UI.renderTable(window.appData, window.userRole, Auth.canEdit);
     UI.updateStats(rows, window.appData);
     
-    // تحديث الكروت فقط للأدمن
+    // تحديث الكروت فقط إذا كان أدمن
     if (window.userRole && window.userRole !== 'viewer') {
         UI.renderCards(window.appData, 'contract');
         UI.renderCards(window.appData, 'contractor');
     }
 }
 
-// --- 3. Global Window Functions (HTML Hooks) ---
+// --- 3. Global Functions (For HTML) ---
 
 window.adminLogin = async function() {
     const { value: pass } = await Swal.fire({ title: 'تسجيل الدخول', input: 'password', confirmButtonText: 'دخول' });
@@ -57,7 +63,6 @@ window.adminLogin = async function() {
     document.getElementById('logoutBtn').classList.remove('hidden');
     document.getElementById('roleDisplay').innerText = result.name;
     
-    // إخفاء/إظهار حسب الصلاحية
     const isSuper = window.userRole === 'super';
     const isViewer = window.userRole === 'viewer';
     document.querySelectorAll('.super-admin-only').forEach(el => el.style.display = isSuper ? 'inline-block' : 'none');
@@ -77,17 +82,16 @@ window.switchView = function(viewId) {
     if(navs[map[viewId]]) navs[map[viewId]].classList.add('active');
 };
 
-// Tooltip proxies
 window.showTooltip = UI.showTooltip;
 window.hideTooltip = UI.hideTooltip;
 window.renderTable = refreshView;
 
-// --- CRUD ---
+// --- Contract CRUD (إصلاح الأسماء هنا) ---
 window.saveContract = function() {
     const id = document.getElementById('form-contract-id').value;
     const data = {
         contractName: document.getElementById('form-contract-name').value, // الاسم الجديد
-        hospital: document.getElementById('form-hospital').value, // Legacy
+        hospital: document.getElementById('form-contract-name').value, // Fallback
         type: document.getElementById('form-type').value,
         contractorId: document.getElementById('form-contractor').value,
         startDate: document.getElementById('form-start-date').value,
@@ -119,19 +123,20 @@ window.prepareEditContract = function(id) {
     const c = window.appData.contracts[id];
     fillSelect();
     document.getElementById('form-contract-id').value = id;
-    // دعم الاسم الجديد والقديم
+    // تعبئة الحقول بشكل صحيح
     document.getElementById('form-contract-name').value = c.contractName || c.hospital;
-    document.getElementById('form-hospital').value = c.hospital; // Hidden legacy
     document.getElementById('form-type').value = c.type;
     document.getElementById('form-contractor').value = c.contractorId;
-    document.getElementById('form-start-date').value = c.startDate;
-    document.getElementById('form-end-date').value = c.endDate;
-    document.getElementById('form-duration').value = c.duration || '';
-    document.getElementById('form-value').value = c.value;
-    document.getElementById('form-contract-num').value = c.contractNumber;
+    document.getElementById('form-start-date').value = c.startDate || "";
+    document.getElementById('form-end-date').value = c.endDate || "";
+    document.getElementById('form-duration').value = c.duration || "";
+    document.getElementById('form-value').value = c.value || "";
+    document.getElementById('form-contract-num').value = c.contractNumber || "";
+    
     UI.toggleModal('contractModal', true);
 };
 
+// Contractor CRUD
 window.saveContractor = function() {
     const id = document.getElementById('form-contractor-id').value;
     const name = document.getElementById('form-new-contractor').value;
@@ -152,6 +157,7 @@ window.prepareEditContractor = function(id, name) {
     UI.toggleModal('contractorModal', true);
 };
 
+// Workflow
 window.handleKpiCell = async function(cid, midx) {
     if (!Auth.canEdit(window.userRole, window.appData.contracts[cid].type)) return;
     const c = window.appData.contracts[cid];
@@ -176,7 +182,7 @@ window.editNote = async function(cid) {
     if(t!==undefined) DB.updateContract(cid, {notes:t});
 };
 
-// --- System ---
+// System
 window.refreshMonthsSystem = async function() {
     if(!window.userRole) return;
     if(!(await Swal.fire({title:'تحديث؟', icon:'warning', showCancelButton:true})).isConfirmed) return;
@@ -219,22 +225,33 @@ window.exportToExcel = function() {
     XLSX.writeFile(wb, "KPI_Report.xlsx");
 };
 
-// --- Helpers ---
+// Helpers
 window.openModal = function(id) {
     UI.toggleModal(id, true);
     if(id==='contractModal') fillSelect();
+    
+    // Clear forms logic
     if(id==='contractorModal' && !document.getElementById('form-contractor-id').value) document.getElementById('form-new-contractor').value='';
+    
     if(id==='contractModal' && !document.getElementById('form-contract-id').value) {
-        document.getElementById('form-contract-name').value=''; document.getElementById('form-contract-num').value='';
+        document.getElementById('form-contract-name').value='';
+        document.getElementById('form-contract-num').value='';
+        document.getElementById('form-value').value='';
+        document.getElementById('form-duration').value='';
+        document.getElementById('form-start-date').value='';
+        document.getElementById('form-end-date').value='';
     }
 };
+
 window.closeModal = function(id) {
     UI.toggleModal(id, false);
     if(id==='contractModal') document.getElementById('form-contract-id').value='';
     if(id==='contractorModal') document.getElementById('form-contractor-id').value='';
 };
+
 function fillSelect() {
     const s = document.getElementById('form-contractor');
+    if(!s) return;
     const curr = s.value;
     s.innerHTML = '<option value="">اختر...</option>';
     Object.entries(window.appData.contractors).forEach(([id,v])=> s.innerHTML+=`<option value="${id}">${v.name}</option>`);
