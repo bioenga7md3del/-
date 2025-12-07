@@ -23,7 +23,7 @@
         </div>
 
         <div id="adminControls" class="admin-controls">
-            <button class="btn-purple super-admin-only" onclick="openModal('contractorModal')">👷 إدارة المقاولين</button>
+            <button class="btn-purple super-admin-only" onclick="openModal('contractorModal')">👷 إضافة مقاول</button>
             <button class="btn-success super-admin-only" onclick="openModal('contractModal')">➕ إضافة عقد جديد</button>
             <button class="btn-primary super-admin-only" onclick="refreshMonthsSystem()">📅 تحديث الشهور (السنة الحالية)</button>
             <button class="btn-warning super-admin-only" onclick="systemReset()">⚠ تهيئة النظام</button>
@@ -45,12 +45,10 @@
         <div class="stat-card"><span class="stat-number" id="countLate" style="color:var(--danger)">0</span><span class="stat-label">المتأخرات</span></div>
     </div>
 
-    <div class="toolbar-section" style="display: flex; gap: 10px; margin-bottom: 20px; flex-wrap:wrap;">
-        <input type="text" id="searchHospital" class="form-control" style="flex:1; min-width: 200px;" placeholder="بحث بالمستشفى..." onkeyup="renderTable()">
-        <input type="text" id="searchContractor" class="form-control" style="flex:1; min-width: 200px;" placeholder="بحث بالمقاول..." onkeyup="renderTable()">
-        
-        <select id="typeFilter" class="form-control" style="width: auto; min-width: 150px;" onchange="renderTable()">
-            <option value="all">كل العقود</option>
+    <div class="toolbar-section" style="display: flex; gap: 10px; margin-bottom: 20px;">
+        <input type="text" id="searchBox" class="form-control" placeholder="بحث شامل (المستشفى / المقاول)..." onkeyup="renderTable()">
+        <select id="typeFilter" class="form-control" style="width: auto;" onchange="renderTable()">
+            <option value="all">الكل</option>
             <option value="طبي">عقود طبية</option>
             <option value="غير طبي">عقود غير طبية</option>
         </select>
