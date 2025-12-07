@@ -76,7 +76,6 @@
         .btn-reset { background: #f39c12; color: white; font-size: 12px; }
         .btn-new-month { background: #8e44ad; color: white; border: 1px solid #fff; }
         
-        /* أزرار خاصة بالأدمن العام فقط */
         .super-admin-only { display: none; } 
 
         .btn-print { 
@@ -139,11 +138,8 @@
         body.editing-mode .editable { 
             border: 2px dashed #3498db; cursor: pointer; background-color: #f0f8ff; 
         }
-        body.editing-mode th.editable-header { 
-            border: 2px dashed #f1c40f; cursor: pointer; background-color: #2980b9; 
-        }
         
-        /* تنسيق الخلايا المغلقة (التي لا يملك المستخدم صلاحية عليها) */
+        /* تنسيق الخلايا المغلقة */
         body.editing-mode .locked-cell {
             opacity: 0.5;
             cursor: not-allowed;
@@ -153,6 +149,8 @@
 
         .status-ok { color: #28a745; font-weight: bold; font-size: 18px; }
         .status-late { color: #dc3545; font-weight: bold; font-size: 18px; }
+        /* أيقونة التفاصيل */
+        .status-detailed { color: #0056b3; font-weight: bold; font-size: 18px; } 
 
         .badge {
             display: inline-block; padding: 2px 8px; border-radius: 12px;
@@ -196,8 +194,17 @@
             th, td { border: 1px solid #000 !important; font-size: 11px; padding: 4px !important; color: black !important; }
             .type-medical { background-color: #e3f2fd !important; }
             .type-non-medical { background-color: #fdebd0 !important; }
-            a { text-decoration: none; color: black; }
-            .locked-cell { opacity: 1 !important; background: none !important; } /* إزالة تأثير القفل في الطباعة */
+            .locked-cell { opacity: 1 !important; background: none !important; }
+            
+            /* إظهار بيانات الخطاب تحت رمز التأكيد (للطباعة) */
+            td[title]:after {
+                content: attr(title);
+                display: block;
+                font-size: 8px;
+                color: #555;
+                margin-top: 2px;
+                white-space: pre-wrap;
+            }
         }
     </style>
 </head>
@@ -226,14 +233,14 @@
             <button class="btn-logout" onclick="location.reload()">خروج</button>
             
             <div style="width: 100%; font-size:12px; color:#bdc3c7; margin-top:5px;">
-                يمكنك التعديل فقط على الصفوف التي تملك صلاحية عليها (الخلايا المتاحة ستكون محاطة بإطار أزرق).
+                اضغط مرتين (Double Click) على الخلية لرفع/إلغاء المستخلص وإدخال البيانات.
             </div>
         </div>
     </div>
 
     <header>
         <div class="header-text">
-            <h1>مؤشر استجابة المواقع لرفع مستخلصات الصيانة </h1>
+            <h1>مؤشر استجابة المواقع لرفع مستخلصات الصيانة الطبية</h1>
             <h2>السنة المالية 2024 / 2025</h2>
         </div>
         <div class="logo-container">
@@ -252,9 +259,9 @@
         <div style="flex-grow: 1;"></div>
         
         <div class="legend">
-            <div><span class="status-ok">✔</span> تم الرفع</div>
+            <div><span class="status-detailed">✅</span> مرفوع + بيانات خطاب</div>
+            <div><span class="status-ok">✔</span> مرفوع</div>
             <div><span class="status-late">✘</span> متأخر</div>
-            <div><strong>أحمر:</strong> عدد المتأخرة</div>
         </div>
     </div>
 
@@ -268,7 +275,7 @@
     </table>
 
     <footer>
-        تم الاعداد عن طريق إدارة الصيانة بتجمع تبوك الصحي
+        تم الاعداد عن طريق قسم الصيانة الطبية بتجمع تبوك الصحي
     </footer>
 </div>
 
@@ -290,8 +297,16 @@
     const db = getDatabase(app);
     
     window.currentData = { monthNames: [], rows: [] };
-    window.userRole = null; // 'super', 'medical', 'non-medical'
+    window.userRole = null;
     window.currentFilter = 'all';
+    
+    // تعريف الهيكل الجديد لبيانات الشهر
+    const emptyMonthData = {
+        status: "✘",
+        letterNum: "",
+        submissionDate: ""
+    };
+
 
     const dataRef = ref(db, 'kpi_data_v4'); 
     onValue(dataRef, (snapshot) => {
@@ -300,6 +315,17 @@
         const table = document.getElementById('mainTable');
         
         if (data && data.rows) {
+            // معالجة البيانات القديمة إذا كانت لا تزال على شكل نص
+            data.rows.forEach(row => {
+                if (row.months && row.months.length > 0 && typeof row.months[0] === 'string') {
+                    row.months = row.months.map(s => ({
+                        status: s,
+                        letterNum: "",
+                        submissionDate: ""
+                    }));
+                }
+            });
+            
             window.currentData = data;
             renderTable();
             loader.style.display = 'none';
@@ -328,11 +354,16 @@
                 "مستشفى أبوراكة العام", "مستشفى الملك فهد", "مستشفى الصحة النفسية", 
                 "مستشفى الملك خالد", "مستشفى الولادة والأطفال", "مستشفى الوجه"
             ];
-            const emptyMonths = ["✔","✔","✔","✔","✔","✔","✔","✔","✔","✔","✔","✔"];
+            
+            // بناء 12 كائناً شهرياً بالحالة الافتراضية "✔"
+            const initialMonths = Array(12).fill().map(() => ({ 
+                status: "✔", letterNum: "", submissionDate: "" 
+            }));
+
             let newRows = [];
             hospitals.forEach(hosp => {
-                newRows.push({ name: hosp, type: "طبي", cont: "اسم المقاول", late: 0, months: [...emptyMonths], notes: "" });
-                newRows.push({ name: hosp, type: "غير طبي", cont: "اسم المقاول", late: 0, months: [...emptyMonths], notes: "" });
+                newRows.push({ name: hosp, type: "طبي", cont: "اسم المقاول", late: 0, months: JSON.parse(JSON.stringify(initialMonths)), notes: "" });
+                newRows.push({ name: hosp, type: "غير طبي", cont: "اسم المقاول", late: 0, months: JSON.parse(JSON.stringify(initialMonths)), notes: "" });
             });
 
             const initialData = {
@@ -368,7 +399,9 @@
         if(!confirm(`إضافة شهر جديد: "${newColumnTitle}"؟`)) { return; }
 
         window.currentData.monthNames.unshift(newColumnTitle);
-        window.currentData.rows.forEach(row => { row.months.unshift("✘"); });
+        window.currentData.rows.forEach(row => { 
+            row.months.unshift(JSON.parse(JSON.stringify(emptyMonthData)));
+        });
 
         if (window.currentData.monthNames.length > 12) {
             window.currentData.monthNames.pop();
@@ -385,30 +418,23 @@
     // --- منطق الصلاحيات ---
     function adminLogin() {
         const pass = prompt("الرجاء إدخال كلمة المرور:");
-        
         let roleName = "";
         
-        if (pass === "2025") {
-            window.userRole = 'super';
-            roleName = "(مدير عام)";
+        if (pass === "1234") {
+            window.userRole = 'super'; roleName = "(مدير عام)";
         } else if (pass === "1111") {
-            window.userRole = 'medical';
-            roleName = "(أدمن طبي)";
+            window.userRole = 'medical'; roleName = "(أدمن طبي)";
         } else if (pass === "2222") {
-            window.userRole = 'non-medical';
-            roleName = "(أدمن غير طبي)";
+            window.userRole = 'non-medical'; roleName = "(أدمن غير طبي)";
         } else {
-            alert("كلمة المرور خاطئة");
-            return;
+            alert("كلمة المرور خاطئة"); return;
         }
 
-        // تفعيل الواجهة
         document.body.classList.add('editing-mode');
         document.getElementById('loginSection').style.display = 'none';
         document.getElementById('adminControls').style.display = 'flex';
         document.getElementById('roleDisplay').innerText = roleName;
 
-        // إظهار/إخفاء الأزرار الخاصة بالسوبر أدمن
         const superBtns = document.querySelectorAll('.super-admin-only');
         superBtns.forEach(btn => {
             btn.style.display = (window.userRole === 'super') ? 'inline-block' : 'none';
@@ -417,7 +443,6 @@
         renderTable();
     }
 
-    // دالة فحص الصلاحية للصف الواحد
     function canEdit(rowType) {
         if (!window.userRole) return false;
         if (window.userRole === 'super') return true;
@@ -447,7 +472,6 @@
         if(data.monthNames) {
             data.monthNames.forEach((monthName, index) => {
                 let style = index === 0 ? "border-bottom: 3px solid #e74c3c;" : "";
-                // السماح بتعديل العناوين فقط للسوبر أدمن
                 let headerClass = (window.userRole === 'super') ? "editable-header" : "";
                 headerRow.innerHTML += `<th class="${headerClass}" style="${style}" onclick="editHeader(${index})">${monthName}</th>`;
             });
@@ -458,93 +482,94 @@
         tbody.innerHTML = '';
 
         if(data.rows) {
-            if (filter === 'all') {
-                let i = 0;
-                while (i < data.rows.length) {
-                    let row = data.rows[i];
-                    let nextRow = data.rows[i+1];
-                    let isSameHospital = (nextRow && row.name === nextRow.name);
-                    
+            let i = 0;
+            while (i < data.rows.length) {
+                let row = data.rows[i];
+                let nextRow = data.rows[i+1];
+                let isSameHospital = (nextRow && row.name === nextRow.name);
+                
+                // تحديد ما إذا كان يجب عرض الصف في حالة الفلترة
+                const showRow = (filter === 'all' || row.type === filter);
+                
+                if (showRow) {
                     const tr1 = document.createElement('tr');
                     
-                    if (isSameHospital) {
+                    if (filter === 'all' && isSameHospital) {
                         tr1.innerHTML += `<td rowspan="2" class="sticky-col-1" style="background-color: #fcfcfc;">${row.name}</td>`;
                     } else {
                         tr1.innerHTML += `<td class="sticky-col-1">${row.name}</td>`;
                     }
-
                     appendRowData(tr1, row, i);
                     tbody.appendChild(tr1);
+                    tr1.classList.add("hospital-separator"); // نضع الفاصل بعد الصف
 
-                    if (isSameHospital) {
+                    if (filter === 'all' && isSameHospital) {
                         const tr2 = document.createElement('tr');
                         appendRowData(tr2, nextRow, i+1);
                         tr2.classList.add("hospital-separator");
                         tbody.appendChild(tr2);
-                        i += 2;
-                    } else {
-                        tr1.classList.add("hospital-separator");
-                        i++;
                     }
                 }
-            } else {
-                data.rows.forEach((row, originalIndex) => {
-                    if (row.type === filter) {
-                        const tr = document.createElement('tr');
-                        tr.innerHTML += `<td class="sticky-col-1">${row.name}</td>`;
-                        appendRowData(tr, row, originalIndex);
-                        tr.classList.add("hospital-separator");
-                        tbody.appendChild(tr);
-                    }
-                });
+
+                if (filter === 'all' && isSameHospital) {
+                    i += 2;
+                } else {
+                    i++;
+                }
             }
         }
     }
 
     function appendRowData(tr, row, rowIndex) {
-        // فحص الصلاحية لهذا الصف
         const isEditable = canEdit(row.type);
-        const editClass = isEditable ? "editable" : "locked-cell"; // كلاس يحدد الشكل
-        const clickAttr = isEditable ? `onclick` : `data-disabled`; // تعطيل النقر إذا لم يملك صلاحية
+        const editClass = isEditable ? "editable" : "locked-cell"; 
 
         let typeClass = row.type === "طبي" ? "type-medical" : "type-non-medical";
         tr.innerHTML += `<td class="sticky-col-2 ${typeClass}">${row.type}</td>`;
         
         // المقاول
-        if (isEditable) {
-            tr.innerHTML += `<td class="sticky-col-3 ${editClass}" onclick="editCell(${rowIndex}, 'cont')">${row.cont}</td>`;
-        } else {
-            tr.innerHTML += `<td class="sticky-col-3 ${editClass}">${row.cont}</td>`;
-        }
+        tr.innerHTML += `<td class="sticky-col-3 ${editClass}" ${isEditable ? `onclick="editCell(${rowIndex}, 'cont')"` : ''}>${row.cont}</td>`;
         
         // المتأخرة
-        let autoLateCount = row.months.filter(m => m.includes('✘')).length;
+        let autoLateCount = row.months.filter(m => m.status === '✘').length; // التعديل هنا: نتحقق من status داخل الكائن
         row.late = autoLateCount;
         let badgeClass = row.late > 0 ? 'badge-red' : 'badge-green';
         tr.innerHTML += `<td><span class="badge ${badgeClass}">${row.late}</span></td>`;
 
         // الشهور
-        row.months.forEach((status, monthIndex) => {
-            let statusClass = status.includes('✔') ? 'status-ok' : 'status-late';
-            if (isEditable) {
-                tr.innerHTML += `<td class="${editClass} ${statusClass}" 
-                                     ondblclick="toggleStatus(${rowIndex}, ${monthIndex})"
-                                     onclick="editMonthText(${rowIndex}, ${monthIndex})">
-                                     ${status}
-                                 </td>`;
-            } else {
-                tr.innerHTML += `<td class="${editClass} ${statusClass}">${status}</td>`;
+        row.months.forEach((statusObject, monthIndex) => {
+            let statusText = statusObject.status;
+            let titleText = '';
+            let statusClass = 'status-late';
+            let displayStatus = statusText;
+
+            if (statusText === '✔') {
+                statusClass = 'status-ok';
+                if (statusObject.letterNum || statusObject.submissionDate) {
+                    statusClass = 'status-detailed'; // أيقونة مختلفة لوجود بيانات
+                    displayStatus = '✅';
+                    titleText = `رقم الخطاب: ${statusObject.letterNum || 'غير مدخل'}\nتاريخ الرفع: ${statusObject.submissionDate || 'غير مدخل'}`;
+                } else {
+                    displayStatus = '✔';
+                    titleText = 'تم الرفع بدون بيانات الخطاب';
+                }
             }
+            
+            // إضافة خاصية title لعرض التفاصيل عند المرور بالفأرة
+            tr.innerHTML += `<td class="${editClass} ${statusClass}" 
+                                 title="${titleText}"
+                                 ondblclick="toggleStatus(${rowIndex}, ${monthIndex}, '${row.type}')"
+                                 onclick="editMonthDetails(${rowIndex}, ${monthIndex}, '${row.type}')">
+                                 ${displayStatus}
+                             </td>`;
         });
 
         // الملاحظات
-        if (isEditable) {
-            tr.innerHTML += `<td class="${editClass} note-text" onclick="editCell(${rowIndex}, 'notes')">${row.notes}</td>`;
-        } else {
-            tr.innerHTML += `<td class="${editClass} note-text">${row.notes}</td>`;
-        }
+        tr.innerHTML += `<td class="${editClass} note-text" ${isEditable ? `onclick="editCell(${rowIndex}, 'notes')"` : ''}>${row.notes}</td>`;
     }
 
+    // --- وظائف التعديل الجديدة والمعدلة ---
+    
     window.editHeader = function(index) {
         if (!window.userRole || window.userRole !== 'super') return;
         let oldVal = window.currentData.monthNames[index];
@@ -557,7 +582,7 @@
 
     window.editCell = function(rowIndex, field) {
         let rowType = window.currentData.rows[rowIndex].type;
-        if (!canEdit(rowType)) return; // منع التعديل
+        if (!canEdit(rowType)) return;
         
         let oldVal = window.currentData.rows[rowIndex][field];
         let newVal = prompt("تعديل القيمة:", oldVal);
@@ -567,18 +592,49 @@
         }
     };
 
-    window.editMonthText = function(rowIndex, monthIndex) { }
+    window.toggleStatus = function(rowIndex, monthIndex, rowType) {
+        if (!canEdit(rowType)) return;
 
-    window.toggleStatus = function(rowIndex, monthIndex) {
-        let rowType = window.currentData.rows[rowIndex].type;
-        if (!canEdit(rowType)) return; // منع التعديل
+        let statusObject = window.currentData.rows[rowIndex].months[monthIndex];
         
-        let currentStatus = window.currentData.rows[rowIndex].months[monthIndex];
-        if (currentStatus.includes('✔')) {
-            window.currentData.rows[rowIndex].months[monthIndex] = '✘';
+        if (statusObject.status === '✔') {
+            if (confirm("هل تريد إلغاء حالة الرفع ومسح بيانات الخطاب؟")) {
+                statusObject.status = '✘';
+                statusObject.letterNum = '';
+                statusObject.submissionDate = '';
+                renderTable();
+            }
         } else {
-            window.currentData.rows[rowIndex].months[monthIndex] = '✔';
+            // If changing from X to V, prompt for details
+            let num = prompt("أدخل رقم الخطاب المالي (مطلوب):");
+            if (num === null) return;
+            let date = prompt("أدخل تاريخ رفع الخطاب للمالية (مثال: 2025-11-05):");
+            if (date === null) return;
+
+            statusObject.status = '✔';
+            statusObject.letterNum = num.trim() || 'غير مدخل';
+            statusObject.submissionDate = date.trim() || 'غير مدخل';
+            renderTable();
         }
+    };
+    
+    window.editMonthDetails = function(rowIndex, monthIndex, rowType) {
+        if (!canEdit(rowType)) return;
+        
+        let statusObject = window.currentData.rows[rowIndex].months[monthIndex];
+        if (statusObject.status !== '✔') {
+            alert("الرجاء الضغط مرتين أولاً لرفع المستخلص (✔) ومن ثم إدخال البيانات.");
+            return;
+        }
+
+        let num = prompt(`تعديل رقم الخطاب الحالي: (${statusObject.letterNum || 'غير مدخل'})`);
+        if (num === null) return;
+        
+        let date = prompt(`تعديل تاريخ الرفع الحالي: (${statusObject.submissionDate || 'غير مدخل'})`);
+        if (date === null) return;
+
+        statusObject.letterNum = num.trim() || 'غير مدخل';
+        statusObject.submissionDate = date.trim() || 'غير مدخل';
         renderTable();
     };
 </script>
