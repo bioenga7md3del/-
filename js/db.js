@@ -10,14 +10,13 @@ export function listenToData(onData, onError) {
     }, onError);
 }
 
-// استماع لكلمات المرور
 export function listenToPasswords(onData) {
     onValue(ref(db, 'app_settings/passwords'), (s) => {
         if (s.exists()) onData(s.val());
     });
 }
 
-// العمليات (CRUD)
+// عمليات العقود
 export function addContract(data) {
     return push(ref(db, 'app_db_v2/contracts'), data);
 }
@@ -30,6 +29,7 @@ export function deleteContract(id) {
     return remove(ref(db, `app_db_v2/contracts/${id}`));
 }
 
+// عمليات المقاولين
 export function addContractor(name) {
     return push(ref(db, 'app_db_v2/contractors'), { name });
 }
@@ -42,6 +42,7 @@ export function deleteContractor(id) {
     return remove(ref(db, `app_db_v2/contractors/${id}`));
 }
 
+// عمليات النظام
 export function updateMonthStatus(contractId, monthIdx, data) {
     return update(ref(db, `app_db_v2/contracts/${contractId}/months/${monthIdx}`), data);
 }
