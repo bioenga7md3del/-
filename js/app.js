@@ -7,7 +7,7 @@ window.appData = { contractors: {}, contracts: {}, monthNames: [] };
 window.userRole = null;
 window.appPasswords = { super: '1234', medical: '1111', non_medical: '2222' };
 
-// --- 1. تهيئة التطبيق ---
+// --- 1. Init ---
 UI.initTooltip();
 
 DB.listenToData((data) => {
@@ -16,52 +16,50 @@ DB.listenToData((data) => {
         window.appData.contractors = data.contractors || {};
         window.appData.contracts = data.contracts || {};
         window.appData.monthNames = data.monthNames || [];
-    } else {
-        window.appData = { contractors: {}, contracts: {}, monthNames: [] };
     }
-    
     try {
-        // تحديث الواجهة دائماً (حتى لو لم يسجل دخول)
         refreshView();
         document.getElementById('mainTable').style.display = 'table';
-    } catch (e) { console.error("Error rendering:", e); }
-
-}, (err) => {
-    document.getElementById('loader').innerText = "خطأ اتصال";
-    console.error(err);
-});
+    } catch (e) { console.error("Render Error:", e); }
+}, console.error);
 
 DB.listenToPasswords((pass) => window.appPasswords = pass);
 
-// --- 2. Refresh Helper ---
+// --- 2. Refresh Helpers ---
 function refreshView() {
-    // نمرر البيانات والدوال المطلوبة للـ UI
+    // تحديث الجدول الرئيسي
     const rows = UI.renderTable(window.appData, window.userRole, Auth.canEdit);
+    // تحديث إحصائيات الداشبورد الرئيسية
     UI.updateStats(rows, window.appData);
     
-    // تحديث الكروت فقط إذا كان أدمن
+    // تحديث صفحات الإدارة (الكروت) إذا كان أدمن
     if (window.userRole && window.userRole !== 'viewer') {
         UI.renderCards(window.appData, 'contract');
         UI.renderCards(window.appData, 'contractor');
     }
 }
 
-// --- 3. Global Functions (For HTML) ---
+// --- 3. Global Functions (Binding HTML to JS) ---
 
+// ✅ هذا هو الإصلاح: تعريف دالة الفلترة لصفحة العقود
+window.renderContractsCards = function() {
+    UI.renderCards(window.appData, 'contract');
+};
+
+// Login
 window.adminLogin = async function() {
-    const { value: pass } = await Swal.fire({ title: 'تسجيل الدخول', input: 'password', confirmButtonText: 'دخول' });
+    const { value: pass } = await Swal.fire({ title: 'دخول', input: 'password', confirmButtonText: 'دخول' });
     if (!pass) return;
     
-    const result = Auth.checkLogin(pass, window.appPasswords);
-    if (!result) { Swal.fire('خطأ', 'كلمة المرور غير صحيحة', 'error'); return; }
+    const res = Auth.checkLogin(pass, window.appPasswords);
+    if (!res) return Swal.fire('خطأ', 'كلمة المرور خطأ', 'error');
     
-    window.userRole = result.role;
-    
+    window.userRole = res.role;
     document.getElementById('loginSection').classList.add('hidden');
     document.getElementById('dashboardControls').classList.remove('hidden');
     document.getElementById('loginBtn').classList.add('hidden');
     document.getElementById('logoutBtn').classList.remove('hidden');
-    document.getElementById('roleDisplay').innerText = result.name;
+    document.getElementById('roleDisplay').innerText = res.name;
     
     const isSuper = window.userRole === 'super';
     const isViewer = window.userRole === 'viewer';
@@ -69,7 +67,6 @@ window.adminLogin = async function() {
     document.querySelectorAll('.restricted-tab').forEach(el => el.style.display = isViewer ? 'none' : 'block');
     
     refreshView();
-    UI.showToast(`مرحباً: ${result.name}`);
 };
 
 window.switchView = function(viewId) {
@@ -82,16 +79,17 @@ window.switchView = function(viewId) {
     if(navs[map[viewId]]) navs[map[viewId]].classList.add('active');
 };
 
+// ربط دوال الـ UI بالنافذة العامة
 window.showTooltip = UI.showTooltip;
 window.hideTooltip = UI.hideTooltip;
-window.renderTable = refreshView;
+window.renderTable = refreshView; // عند البحث في الجدول الرئيسي
 
-// --- Contract CRUD (إصلاح الأسماء هنا) ---
+// --- CRUD Operations ---
 window.saveContract = function() {
     const id = document.getElementById('form-contract-id').value;
     const data = {
-        contractName: document.getElementById('form-contract-name').value, // الاسم الجديد
-        hospital: document.getElementById('form-contract-name').value, // Fallback
+        contractName: document.getElementById('form-contract-name').value,
+        hospital: document.getElementById('form-contract-name').value, 
         type: document.getElementById('form-type').value,
         contractorId: document.getElementById('form-contractor').value,
         startDate: document.getElementById('form-start-date').value,
@@ -115,15 +113,12 @@ window.saveContract = function() {
     }
 };
 
-window.deleteContract = async (id) => {
-    if((await Swal.fire({title:'حذف؟', icon:'warning', showCancelButton:true})).isConfirmed) DB.deleteContract(id);
-};
+window.deleteContract = async (id) => { if((await Swal.fire({title:'حذف؟',icon:'warning',showCancelButton:true})).isConfirmed) DB.deleteContract(id); };
 
 window.prepareEditContract = function(id) {
     const c = window.appData.contracts[id];
     fillSelect();
     document.getElementById('form-contract-id').value = id;
-    // تعبئة الحقول بشكل صحيح
     document.getElementById('form-contract-name').value = c.contractName || c.hospital;
     document.getElementById('form-type').value = c.type;
     document.getElementById('form-contractor').value = c.contractorId;
@@ -132,11 +127,9 @@ window.prepareEditContract = function(id) {
     document.getElementById('form-duration').value = c.duration || "";
     document.getElementById('form-value').value = c.value || "";
     document.getElementById('form-contract-num').value = c.contractNumber || "";
-    
     UI.toggleModal('contractModal', true);
 };
 
-// Contractor CRUD
 window.saveContractor = function() {
     const id = document.getElementById('form-contractor-id').value;
     const name = document.getElementById('form-new-contractor').value;
@@ -145,35 +138,29 @@ window.saveContractor = function() {
     p.then(() => { UI.showToast("تم"); UI.toggleModal('contractorModal', false); });
 };
 
-window.deleteContractor = function(id) {
-    const has = Object.values(window.appData.contracts).some(c => c.contractorId === id);
-    if(has) Swal.fire('لا يمكن الحذف','مرتبط بعقود','error');
-    else DB.deleteContractor(id);
-};
-
 window.prepareEditContractor = function(id, name) {
     document.getElementById('form-contractor-id').value = id;
     document.getElementById('form-new-contractor').value = name;
     UI.toggleModal('contractorModal', true);
 };
 
-// Workflow
+window.deleteContractor = function(id) {
+    const has = Object.values(window.appData.contracts).some(c => c.contractorId === id);
+    if(has) Swal.fire('لا','مرتبط بعقود','error'); else DB.deleteContractor(id);
+};
+
 window.handleKpiCell = async function(cid, midx) {
     if (!Auth.canEdit(window.userRole, window.appData.contracts[cid].type)) return;
-    const c = window.appData.contracts[cid];
-    if(!c.months || !c.months[midx]) return UI.showToast("حدث الشهور أولاً");
+    const m = window.appData.contracts[cid].months[midx];
+    if(!m) return UI.showToast("حدث الشهور أولاً");
     
-    const m = c.months[midx];
     const {value:v} = await Swal.fire({
         title: window.appData.monthNames[midx],
-        html: `<select id="sw-st" class="form-control"><option value="late" ${m.financeStatus==='late'?'selected':''}>متأخر</option><option value="sent" ${m.financeStatus==='sent'?'selected':''}>تم الرفع</option><option value="returned" ${m.financeStatus==='returned'?'selected':''}>إعادة</option></select><input id="sw-cn" class="form-control" placeholder="رقم المطالبة" value="${m.claimNum||''}" style="margin-top:5px"><input id="sw-ln" class="form-control" placeholder="رقم الخطاب" value="${m.letterNum||''}" style="margin-top:5px"><input id="sw-dt" class="form-control" type="date" value="${m.submissionDate||''}" style="margin-top:5px"><input id="sw-nt" class="form-control" placeholder="ملاحظات" value="${m.returnNotes||''}" style="margin-top:5px">`,
+        html: `<select id="sw-st" class="form-control"><option value="late" ${m.financeStatus==='late'?'selected':''}>متأخر</option><option value="sent" ${m.financeStatus==='sent'?'selected':''}>تم الرفع</option><option value="returned" ${m.financeStatus==='returned'?'selected':''}>إعادة</option></select><input id="sw-cn" class="form-control" placeholder="رقم المطالبة" value="${m.claimNum||''}" style="margin:5px 0"><input id="sw-ln" class="form-control" placeholder="رقم الخطاب" value="${m.letterNum||''}" style="margin:5px 0"><input id="sw-dt" class="form-control" type="date" value="${m.submissionDate||''}" style="margin:5px 0"><input id="sw-nt" class="form-control" placeholder="ملاحظات" value="${m.returnNotes||''}" style="margin:5px 0">`,
         preConfirm: () => ({ financeStatus:document.getElementById('sw-st').value, claimNum:document.getElementById('sw-cn').value, letterNum:document.getElementById('sw-ln').value, submissionDate:document.getElementById('sw-dt').value, returnNotes:document.getElementById('sw-nt').value })
     });
     
-    if(v) DB.updateMonthStatus(cid, midx, v).then(() => {
-        window.appData.contracts[cid].months[midx] = v; 
-        refreshView(); UI.showToast("تم");
-    });
+    if(v) DB.updateMonthStatus(cid, midx, v).then(() => { window.appData.contracts[cid].months[midx] = v; refreshView(); UI.showToast("تم"); });
 };
 
 window.editNote = async function(cid) {
@@ -182,16 +169,14 @@ window.editNote = async function(cid) {
     if(t!==undefined) DB.updateContract(cid, {notes:t});
 };
 
-// System
 window.refreshMonthsSystem = async function() {
     if(!window.userRole) return;
-    if(!(await Swal.fire({title:'تحديث؟', icon:'warning', showCancelButton:true})).isConfirmed) return;
+    if(!(await Swal.fire({title:'تحديث؟',icon:'warning',showCancelButton:true})).isConfirmed) return;
     const now = new Date();
-    const arM = ["يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو", "يوليو", "أغسطس", "سبتمبر", "أكتوبر", "نوفمبر", "ديسمبر"];
+    const arM = ["يناير","فبراير","مارس","أبريل","مايو","يونيو","يوليو","أغسطس","سبتمبر","أكتوبر","نوفمبر","ديسمبر"];
     let mNames = [];
     for(let i=0; i<now.getMonth(); i++) mNames.push(`${arM[i]} ${now.getFullYear()}`);
     mNames.reverse();
-    
     DB.updateMonthsList(mNames);
     Object.entries(window.appData.contracts).forEach(([id, c]) => {
         const adj = new Array(mNames.length).fill(null).map((_,i) => (c.months||[])[i] || {status:"late", financeStatus:"late"});
@@ -202,53 +187,37 @@ window.refreshMonthsSystem = async function() {
 
 window.systemReset = async function() {
     if(window.userRole!=='super') return;
-    if((await Swal.fire({title:'مسح الكل؟', icon:'warning', showCancelButton:true})).isConfirmed) {
-        DB.resetDatabase().then(() => location.reload());
-        DB.savePasswords({ super: '1234', medical: '1111', non_medical: '2222' });
+    if((await Swal.fire({title:'مسح؟',icon:'warning',showCancelButton:true})).isConfirmed) {
+        DB.resetDatabase().then(()=>location.reload());
+        DB.savePasswords({ super:'1234', medical:'1111', non_medical:'2222' });
     }
 };
 
-window.changePasswords = async function() {
-    if (!window.userRole || window.userRole !== 'super') return;
-    const { value: f } = await Swal.fire({
-        title: 'تغيير كلمات المرور',
-        html: '<input id="p1" class="swal2-input" value="'+window.appPasswords.super+'"><input id="p2" class="swal2-input" value="'+window.appPasswords.medical+'"><input id="p3" class="swal2-input" value="'+window.appPasswords.non_medical+'">',
-        preConfirm: () => ({ super: document.getElementById('p1').value, medical: document.getElementById('p2').value, non_medical: document.getElementById('p3').value })
-    });
-    if (f) DB.savePasswords(f).then(() => { window.appPasswords = f; UI.showToast('تم الحفظ'); });
-}
-
-window.exportToExcel = function() {
+window.exportToExcel = UI.exportToExcel = function() {
     const ws = XLSX.utils.table_to_sheet(document.getElementById('mainTable'));
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "KPI");
     XLSX.writeFile(wb, "KPI_Report.xlsx");
 };
 
-// Helpers
 window.openModal = function(id) {
     UI.toggleModal(id, true);
     if(id==='contractModal') fillSelect();
-    
-    // Clear forms logic
     if(id==='contractorModal' && !document.getElementById('form-contractor-id').value) document.getElementById('form-new-contractor').value='';
-    
     if(id==='contractModal' && !document.getElementById('form-contract-id').value) {
         document.getElementById('form-contract-name').value='';
         document.getElementById('form-contract-num').value='';
-        document.getElementById('form-value').value='';
         document.getElementById('form-duration').value='';
+        document.getElementById('form-value').value='';
         document.getElementById('form-start-date').value='';
         document.getElementById('form-end-date').value='';
     }
 };
-
 window.closeModal = function(id) {
     UI.toggleModal(id, false);
     if(id==='contractModal') document.getElementById('form-contract-id').value='';
     if(id==='contractorModal') document.getElementById('form-contractor-id').value='';
 };
-
 function fillSelect() {
     const s = document.getElementById('form-contractor');
     if(!s) return;
@@ -257,3 +226,13 @@ function fillSelect() {
     Object.entries(window.appData.contractors).forEach(([id,v])=> s.innerHTML+=`<option value="${id}">${v.name}</option>`);
     s.value = curr;
 }
+window.showToast = UI.showToast;
+window.changePasswords = async function() {
+    if (!window.userRole || window.userRole !== 'super') return;
+    const { value: f } = await Swal.fire({
+        title: 'تغيير كلمات المرور',
+        html: '<input id="p1" class="swal2-input" value="'+window.appPasswords.super+'"><input id="p2" class="swal2-input" value="'+window.appPasswords.medical+'"><input id="p3" class="swal2-input" value="'+window.appPasswords.non_medical+'">',
+        preConfirm: () => ({ super: document.getElementById('p1').value, medical: document.getElementById('p2').value, non_medical: document.getElementById('p3').value })
+    });
+    if (f) DB.savePasswords(f).then(() => { window.appPasswords = f; UI.showToast('تم الحفظ'); });
+};
