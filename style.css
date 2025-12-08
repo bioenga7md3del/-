@@ -49,10 +49,9 @@ thead th { background: var(--primary); color: white; padding: 10px 5px; position
 td { padding: 5px; text-align: center; border-bottom: 1px solid #eee; border-right: 1px solid #eee; vertical-align: middle; font-size: 12px; height: 35px; color: #333 !important; }
 
 /* Sticky Cols */
-.sticky-col-1, .sticky-col-2, .sticky-col-3 { position: sticky; z-index: 50; color: #333 !important; }
-.sticky-col-1 { right: 0; background: #f9f9f9; border-left: 2px solid #ccc; min-width: 160px; font-weight: bold; }
-.sticky-col-2 { right: 160px; z-index: 49; background: #fff; border-left: 1px solid #ddd; min-width: 80px; cursor: help; }
-.sticky-col-3 { right: 240px; background: #f9f9f9; border-left: 1px solid #ddd; min-width: 140px; box-shadow: -3px 0 5px rgba(0,0,0,0.05); }
+.sticky-col-1 { position: sticky; right: 0; z-index: 50; background: #f9f9f9; border-left: 2px solid #ccc; min-width: 160px; font-weight: bold; color: #333 !important; }
+.sticky-col-2 { position: sticky; right: 160px; z-index: 49; background: #fff; border-left: 1px solid #ddd; min-width: 80px; cursor: help; color: #333 !important; }
+.sticky-col-3 { position: sticky; right: 240px; z-index: 50; background: #f9f9f9; border-left: 1px solid #ddd; min-width: 140px; box-shadow: -3px 0 5px rgba(0,0,0,0.05); color: #333 !important; }
 thead th:nth-child(1) { right: 0; z-index: 110; min-width: 160px; }
 thead th:nth-child(2) { right: 160px; z-index: 110; min-width: 80px; }
 thead th:nth-child(3) { right: 240px; z-index: 110; min-width: 140px; box-shadow: -3px 0 5px rgba(0,0,0,0.1); }
@@ -63,7 +62,7 @@ tr.row-medical td.sticky-col-1, tr.row-medical td.sticky-col-3 { background-colo
 tr.row-non-medical td { background-color: var(--non-medical-bg); }
 tr.row-non-medical td.sticky-col-1, tr.row-non-medical td.sticky-col-3 { background-color: var(--non-medical-bg) !important; }
 
-/* Status & Badges */
+/* Status */
 .status-ok { color: var(--success); font-size: 18px; }
 .status-late { color: var(--danger); font-size: 18px; }
 .status-returned { color: var(--warning); font-size: 18px; cursor: help; }
@@ -71,9 +70,8 @@ tr.row-non-medical td.sticky-col-1, tr.row-non-medical td.sticky-col-3 { backgro
 .badge-red { background: var(--danger); }
 .badge-green { background: var(--success); }
 .badge-orange { background: var(--warning); }
+.badge-yellow { background: #f1c40f; color: #2c3e50; }
 .badge-grey { background: #7f8c8d; }
-/* الكلاس الجديد */
-.badge-yellow { background: #f1c40f; color: #2c3e50; } 
 
 /* Cards */
 .cards-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 15px; }
@@ -99,5 +97,26 @@ tr.row-non-medical td.sticky-col-1, tr.row-non-medical td.sticky-col-3 { backgro
 #toast { visibility: hidden; background: #333; color: white; padding: 10px 25px; border-radius: 50px; position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%); z-index: 3000; }
 #toast.show { visibility: visible; bottom: 50px; opacity: 1; }
 
-@media (max-width: 768px) { .nav-links { display: none; } .sticky-col-2, .sticky-col-3 { position: static !important; } .toolbar-section { flex-direction: column; } }
-@media print { .navbar, .admin-panel, .btn-print, #loginSection, .modal-overlay, .toolbar-section, .card-actions { display: none !important; } .container { box-shadow: none; padding: 0; width: 100%; } .page-section { display: none; } #dashboard-view { display: block; } .dashboard-container { display: none; } th, td { border: 1px solid #000 !important; font-size: 9px !important; padding: 2px !important; color: black !important; } .sticky-col-1, .sticky-col-2, .sticky-col-3 { position: static !important; } #global-tooltip { display: none !important; } @page { size: landscape; margin: 5mm; } .page-section.active .cards-grid { display: block !important; } .page-section.active .data-card { border: 1px solid #000; margin-bottom: 10px; break-inside: avoid; box-shadow: none; } .page-section.active .card-actions { display: none !important; } }
+/* Print Settings (إصلاح الطباعة) */
+@media print {
+    @page { size: landscape; margin: 5mm; } /* فرض الوضع الأفقي */
+    .navbar, .admin-panel, .btn-print, #loginSection, .modal-overlay, .toolbar-section, .card-actions { display: none !important; }
+    .container { box-shadow: none; padding: 0; width: 100%; max-width: 100%; }
+    .page-section { display: none; }
+    #dashboard-view { display: block; }
+    .dashboard-container { display: none; } /* إخفاء الإحصائيات العلوية */
+    
+    .table-wrapper { overflow: visible !important; border: none; }
+    table { width: 100%; min-width: 100%; }
+    th, td { border: 1px solid #000 !important; font-size: 9px !important; padding: 4px !important; color: black !important; }
+    
+    /* إزالة التثبيت عند الطباعة لمنع قص الأعمدة */
+    .sticky-col-1, .sticky-col-2, .sticky-col-3, thead th { position: static !important; box-shadow: none !important; }
+    
+    #global-tooltip { display: none !important; }
+    
+    /* طباعة قائمة العقود */
+    .page-section.active .cards-grid { display: block !important; }
+    .page-section.active .data-card { border: 1px solid #000; margin-bottom: 10px; break-inside: avoid; box-shadow: none; }
+    .page-section.active .card-actions { display: none !important; }
+}
