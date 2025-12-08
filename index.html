@@ -18,13 +18,13 @@
         <span style="margin-right:10px;">إدارة عقود الصيانة</span>
     </div>
     <div class="nav-links">
-        <div class="nav-item active" onclick="switchView('dashboard-view')">📊 الرئيسية</div>
-        <div class="nav-item restricted-tab" onclick="switchView('contracts-view')">📑 سجل العقود</div>
-        <div class="nav-item restricted-tab" onclick="switchView('contractors-view')">👷 سجل المقاولين</div>
+        <div class="nav-item active" onclick="window.switchView('dashboard-view')">📊 الرئيسية</div>
+        <div class="nav-item restricted-tab" onclick="window.switchView('contracts-view')">📑 سجل العقود</div>
+        <div class="nav-item restricted-tab" onclick="window.switchView('contractors-view')">👷 سجل المقاولين</div>
     </div>
     <div style="display:flex; gap:10px; align-items:center;">
         <span id="roleDisplay" style="color:var(--primary); font-weight:bold; font-size:12px;"></span>
-        <button class="btn-primary" id="loginBtn" onclick="adminLogin()">🔑 دخول</button>
+        <button class="btn-primary" id="loginBtn" onclick="window.adminLogin()">🔑 دخول</button>
         <button class="btn-danger hidden" id="logoutBtn" onclick="location.reload()">خروج</button>
     </div>
 </nav>
@@ -35,11 +35,11 @@
         <div class="admin-panel hidden" id="dashboardControls">
             <div style="font-weight:bold; color:var(--secondary)">أدوات:</div>
             <div style="display:flex; gap:5px; flex-wrap:wrap;">
-                <button class="btn-primary super-admin-only" onclick="refreshMonthsSystem()">📅 تحديث الشهور</button>
-                <button class="btn-warning super-admin-only" onclick="systemReset()">⚠ تهيئة</button>
-                <button class="btn-purple super-admin-only" onclick="changePasswords()">🔑 الباسورد</button>
+                <button class="btn-primary super-admin-only" onclick="window.refreshMonthsSystem()">📅 تحديث الشهور</button>
+                <button class="btn-warning super-admin-only" onclick="window.systemReset()">⚠ تهيئة</button>
+                <button class="btn-purple super-admin-only" onclick="window.changePasswords()">🔑 الباسورد</button>
                 <div style="width:1px; background:#ddd; margin:0 5px;"></div>
-                <button class="btn-success" onclick="exportToExcel()">📊 Excel</button>
+                <button class="btn-success" onclick="window.exportToExcel()">📊 Excel</button>
                 <button class="btn-primary" onclick="window.print()">🖨 طباعة</button>
             </div>
         </div>
@@ -55,9 +55,10 @@
         </div>
 
         <div class="toolbar-section">
-            <div style="flex:1; min-width:200px;"><input type="text" id="searchHospital" class="form-control" placeholder="بحث باسم العقد..." onkeyup="renderTable()"></div>
-            <div style="flex:1; min-width:200px;"><input type="text" id="searchContractor" class="form-control" placeholder="بحث بالمقاول..." onkeyup="renderTable()"></div>
-            <select id="typeFilter" class="form-control" style="width:auto; min-width:150px;" onchange="renderTable()">
+            <div style="flex:1; min-width:200px;"><input type="text" id="searchHospital" class="form-control" placeholder="بحث باسم العقد..." onkeyup="window.renderTable()"></div>
+            <div style="flex:1; min-width:200px;"><input type="text" id="searchContractor" class="form-control" placeholder="بحث بالمقاول..." onkeyup="window.renderTable()"></div>
+            <div style="flex:1; min-width:150px;"><input type="text" id="searchClaim" class="form-control" placeholder="رقم المطالبة..." onkeyup="window.renderTable()"></div>
+            <select id="typeFilter" class="form-control" style="width:auto; min-width:150px;" onchange="window.renderTable()">
                 <option value="all">الكل</option>
                 <option value="طبي">طبي</option>
                 <option value="غير طبي">غير طبي</option>
@@ -73,60 +74,42 @@
     </section>
 
     <section id="contracts-view" class="page-section">
-        
         <div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); margin-bottom: 20px;">
-            <div class="stat-card" style="border-right-color: var(--success);">
-                <span class="stat-number" id="cardActiveContracts">0</span>
-                <span class="stat-label">عقود سارية</span>
-            </div>
-            <div class="stat-card" style="border-right-color: #f1c40f;">
-                <span class="stat-number" id="cardSoonContracts">0</span>
-                <span class="stat-label">على وشك الانتهاء</span>
-            </div>
-            <div class="stat-card" style="border-right-color: var(--danger);">
-                <span class="stat-number" id="cardExpiredContracts">0</span>
-                <span class="stat-label">عقود منتهية</span>
-            </div>
-            <div class="stat-card" style="border-right-color: var(--primary);">
-                <span class="stat-number" id="cardTotalMedical" style="font-size: 18px;">0</span>
-                <span class="stat-label">قيمة العقود الطبية</span>
-            </div>
-            <div class="stat-card" style="border-right-color: #d35400;">
-                <span class="stat-number" id="cardTotalNonMedical" style="font-size: 18px;">0</span>
-                <span class="stat-label">قيمة العقود غير الطبية</span>
-            </div>
+            <div class="stat-card" style="border-right-color: var(--success);"><span class="stat-number" id="cardActiveContracts">0</span><span class="stat-label">عقود سارية</span></div>
+            <div class="stat-card" style="border-right-color: #f1c40f;"><span class="stat-number" id="cardSoonContracts">0</span><span class="stat-label">على وشك الانتهاء</span></div>
+            <div class="stat-card" style="border-right-color: var(--danger);"><span class="stat-number" id="cardExpiredContracts">0</span><span class="stat-label">عقود منتهية</span></div>
+            <div class="stat-card" style="border-right-color: var(--primary);"><span class="stat-number" id="cardTotalMedical" style="font-size: 18px;">0</span><span class="stat-label">قيمة العقود الطبية</span></div>
+            <div class="stat-card" style="border-right-color: #d35400;"><span class="stat-number" id="cardTotalNonMedical" style="font-size: 18px;">0</span><span class="stat-label">قيمة العقود غير الطبية</span></div>
         </div>
 
         <div class="admin-panel">
             <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap; flex: 1;">
                 <h2 style="margin:0; font-size:18px; min-width: 100px;">سجل العقود</h2>
-                
-                <input id="filterContractName" class="form-control" style="max-width: 200px;" placeholder="بحث..." onkeyup="renderContractsCards()">
-                <select id="filterContractStatus" class="form-control" style="width: auto;" onchange="renderContractsCards()">
+                <input id="filterContractName" class="form-control" style="max-width: 200px;" placeholder="بحث..." onkeyup="window.renderContractsCards()">
+                <select id="filterContractStatus" class="form-control" style="width: auto;" onchange="window.renderContractsCards()">
                     <option value="all">كل الحالات</option>
                     <option value="active">ساري ✅</option>
-                    <option value="soon">على وشك الانتهاء ⚠️</option> <option value="expired">منتهي ❌</option>
+                    <option value="soon">على وشك الانتهاء ⚠️</option>
+                    <option value="expired">منتهي ❌</option>
                 </select>
-                <select id="filterContractType2" class="form-control" style="width: auto;" onchange="renderContractsCards()">
+                <select id="filterContractType2" class="form-control" style="width: auto;" onchange="window.renderContractsCards()">
                     <option value="all">كل الأنواع</option>
                     <option value="طبي">طبي</option>
                     <option value="غير طبي">غير طبي</option>
                 </select>
             </div>
-            
             <div style="display: flex; gap: 5px;">
                 <button class="btn-primary" onclick="window.print()">🖨 طباعة القائمة</button>
-                <button class="btn-success" onclick="openModal('contractModal')">➕ إضافة عقد</button>
+                <button class="btn-success" onclick="window.openModal('contractModal')">➕ إضافة عقد</button>
             </div>
         </div>
-
         <div id="contractsGrid" class="cards-grid"></div>
     </section>
 
     <section id="contractors-view" class="page-section">
         <div class="admin-panel">
             <h2 style="margin:0; font-size:18px;">سجل المقاولين</h2>
-            <button class="btn-purple" onclick="openModal('contractorModal')">➕ إضافة مقاول</button>
+            <button class="btn-purple" onclick="window.openModal('contractorModal')">➕ إضافة مقاول</button>
         </div>
         <div id="contractorsGrid" class="cards-grid"></div>
     </section>
@@ -138,7 +121,7 @@
 
 <div id="contractModal" class="modal-overlay">
     <div class="modal-content">
-        <div class="modal-header"><h3>بيانات العقد</h3><button class="close-btn" onclick="closeModal('contractModal')">&times;</button></div>
+        <div class="modal-header"><h3>بيانات العقد</h3><button class="close-btn" onclick="window.closeModal('contractModal')">&times;</button></div>
         <div class="modal-body">
             <input type="hidden" id="form-contract-id">
             <div class="form-group"><label>اسم العقد / الموقع <span style="color:red">*</span></label><input type="text" id="form-contract-name" class="form-control" placeholder="مثال: عقد صيانة مستشفى..."></div>
@@ -156,18 +139,18 @@
             </div>
             <div class="form-group"><label>رقم العقد</label><input type="text" id="form-contract-num" class="form-control"></div>
         </div>
-        <div class="modal-footer"><button class="btn-primary" onclick="saveContract()">حفظ</button><button class="btn-danger" onclick="closeModal('contractModal')">إلغاء</button></div>
+        <div class="modal-footer"><button class="btn-primary" onclick="window.saveContract()">حفظ</button><button class="btn-danger" onclick="window.closeModal('contractModal')">إلغاء</button></div>
     </div>
 </div>
 
 <div id="contractorModal" class="modal-overlay">
     <div class="modal-content">
-        <div class="modal-header"><h3>بيانات المقاول</h3><button class="close-btn" onclick="closeModal('contractorModal')">&times;</button></div>
+        <div class="modal-header"><h3>بيانات المقاول</h3><button class="close-btn" onclick="window.closeModal('contractorModal')">&times;</button></div>
         <div class="modal-body">
             <input type="hidden" id="form-contractor-id">
             <div class="form-group"><label>اسم الشركة <span style="color:red">*</span></label><input type="text" id="form-new-contractor" class="form-control"></div>
         </div>
-        <div class="modal-footer"><button class="btn-primary" onclick="saveContractor()">حفظ</button><button class="btn-danger" onclick="closeModal('contractorModal')">إلغاء</button></div>
+        <div class="modal-footer"><button class="btn-primary" onclick="window.saveContractor()">حفظ</button><button class="btn-danger" onclick="window.closeModal('contractorModal')">إلغاء</button></div>
     </div>
 </div>
 
