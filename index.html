@@ -74,22 +74,26 @@
 
     <section id="contracts-view" class="page-section">
         
-        <div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); margin-bottom: 20px;">
+        <div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); margin-bottom: 20px;">
             <div class="stat-card" style="border-right-color: var(--success);">
                 <span class="stat-number" id="cardActiveContracts">0</span>
                 <span class="stat-label">عقود سارية</span>
+            </div>
+            <div class="stat-card" style="border-right-color: #f1c40f;">
+                <span class="stat-number" id="cardSoonContracts">0</span>
+                <span class="stat-label">على وشك الانتهاء</span>
             </div>
             <div class="stat-card" style="border-right-color: var(--danger);">
                 <span class="stat-number" id="cardExpiredContracts">0</span>
                 <span class="stat-label">عقود منتهية</span>
             </div>
             <div class="stat-card" style="border-right-color: var(--primary);">
-                <span class="stat-number" id="cardTotalMedical" style="font-size: 20px;">0</span>
-                <span class="stat-label">إجمالي العقود الطبية</span>
+                <span class="stat-number" id="cardTotalMedical" style="font-size: 18px;">0</span>
+                <span class="stat-label">قيمة العقود الطبية</span>
             </div>
             <div class="stat-card" style="border-right-color: #d35400;">
-                <span class="stat-number" id="cardTotalNonMedical" style="font-size: 20px;">0</span>
-                <span class="stat-label">إجمالي العقود غير الطبية</span>
+                <span class="stat-number" id="cardTotalNonMedical" style="font-size: 18px;">0</span>
+                <span class="stat-label">قيمة العقود غير الطبية</span>
             </div>
         </div>
 
@@ -101,7 +105,7 @@
                 <select id="filterContractStatus" class="form-control" style="width: auto;" onchange="renderContractsCards()">
                     <option value="all">كل الحالات</option>
                     <option value="active">ساري ✅</option>
-                    <option value="expired">منتهي ❌</option>
+                    <option value="soon">على وشك الانتهاء ⚠️</option> <option value="expired">منتهي ❌</option>
                 </select>
                 <select id="filterContractType2" class="form-control" style="width: auto;" onchange="renderContractsCards()">
                     <option value="all">كل الأنواع</option>
